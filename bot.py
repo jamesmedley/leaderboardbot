@@ -79,10 +79,10 @@ class MyClient(discord.Client):
         if message.author == client.user:
             return
 
-        if WUAwaiting == False and message.author.id == 748488791471161405:  # WU bot id: 748488791471161405
+        if not WUAwaiting and message.author.id == 748488791471161405:  # WU bot id: 748488791471161405
             WUAwaiting = True
 
-        if WUAwaiting == True and message.author.id != 748488791471161405 and message.channel.id == 525730239800672257:
+        if WUAwaiting and message.author.id != 748488791471161405 and message.channel.id == 525730239800672257:
             WUAwaiting = False
             await message.add_reaction("🏆")
             winner_id = message.author.id
