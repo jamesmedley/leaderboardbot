@@ -4,6 +4,7 @@ import json
 
 app = Flask(' ')
 
+
 @app.route('/')
 def home():
     return """
@@ -15,27 +16,32 @@ def home():
     </ul>
     """
 
+
 @app.route('/wakingup')
 def wakingup():
-  with open("WUscores.json", "r") as f:
-    data = json.load(f)
-  return data
+    with open("WUscores.json", "r") as f:
+        data = json.load(f)
+    return data
+
 
 @app.route('/lastmessage')
 def lastmessage():
-  with open("LMscores.json", "r") as f:
-    data = json.load(f)
-  return data
+    with open("LMscores.json", "r") as f:
+        data = json.load(f)
+    return data
+
 
 @app.route('/streaks')
 def streaks():
-  with open("streak.json", "r") as f:
-    data = json.load(f)
-  return data
+    with open("streak.json", "r") as f:
+        data = json.load(f)
+    return data
+
 
 def run():
-  app.run(host = "0.0.0.0", port = 8081)
+    app.run(host="0.0.0.0", port=8081)
+
 
 def keep_alive():
-  t= Thread(target=run)
-  t.start()
+    t = Thread(target=run)
+    t.start()
