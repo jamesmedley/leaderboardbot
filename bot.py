@@ -27,12 +27,13 @@ class MyClient(discord.Client):
                 data[str(winner_id)] = 1
             else:
                 data[str(winner_id)] += 1
-
+        f.close()
         streak = self.update_streak(True, winner_id)
         await channel.send(
             f"{winner} has now won the Last Message Of The Day Award {data[str(winner_id)]} times.     {streak}🔥")
         with open("LMscores.json", "w") as f:
             json.dump(data, f, indent=0)
+        f.close()
 
     async def on_ready(self):
         print(f"Logged in as {client.user}")
@@ -48,6 +49,7 @@ class MyClient(discord.Client):
     def update_streak(self, lm, winner_id):
         with open("streak.json", "r") as f:
             data = json.load(f)
+        f.close()
         if lm:
             if list(data["LM"].keys())[0] == str(winner_id):
                 data["LM"][str(winner_id)] += 1
@@ -61,7 +63,7 @@ class MyClient(discord.Client):
 
         with open("streak.json", "w") as f:
             json.dump(data, f, indent=0)
-
+        f.close()
         if lm:
             return data["LM"][str(winner_id)]
         else:
@@ -93,14 +95,14 @@ class MyClient(discord.Client):
                     data[str(winner_id)] = 1
                 else:
                     data[str(winner_id)] += 1
-
+            f.close()
             streak = self.update_streak(False, winner_id)
             await message.channel.send(
                 f"{winner} has now won the Waking Up Early Award {data[str(winner_id)]} times.     {streak}🔥"
             )
             with open("WUscores.json", "w") as f:
                 json.dump(data, f, indent=0)
-
+            f.close()
         if message.content.startswith(prefix):
             messageList = message.content.split()
             if len(messageList) == 3:
@@ -117,13 +119,14 @@ class MyClient(discord.Client):
                             data[str(winner_id)] = 1
                         else:
                             data[str(winner_id)] += 1
-
+                    f.close()
                     streak = self.update_streak(False, winner_id)
                     await message.channel.send(
                         f"{winner} has now won the Waking Up Early Award {data[str(winner_id)]} times.     {streak}🔥")
                     with open("WUscores.json", "w") as f:
                         json.dump(data, f, indent=0)
-                        return
+                    f.close()
+                    return
                 elif messageList[1] == "lm":
                     if message.author.id != 603142766805123082 and message.author.id != 299216822647914499:
                         await message.channel.send(
@@ -137,14 +140,15 @@ class MyClient(discord.Client):
                             data[str(winner_id)] = 1
                         else:
                             data[str(winner_id)] += 1
-
+                    f.close()
                     streak = self.update_streak(True, winner_id)
                     await message.channel.send(
                         f"{winner} has now won the Last Message Of The Day Award {data[str(winner_id)]} times.     {streak}🔥"
                     )
                     with open("LMscores.json", "w") as f:
                         json.dump(data, f, indent=0)
-                        return
+                    f.close()
+                    return
                 else:
                     return
 
@@ -152,6 +156,7 @@ class MyClient(discord.Client):
                 if messageList[1] == "s":
                     with open("streak.json", "r") as f:
                         data = json.load(f)
+                    f.close()
                     lm_user = list(data["LM"].keys())[0]
                     wu_user = list(data["WU"].keys())[0]
                     lm_streak = data["LM"][str(lm_user)]
@@ -170,6 +175,7 @@ class MyClient(discord.Client):
 
             with open("WUscores.json", "r") as f:
                 data = json.load(f)
+                f.close()
                 leaders = sorted(data.items(), key=lambda x: x[1], reverse=True)
                 eb = discord.Embed(title="Waking Up Early Award Leaderboard",
                                    color=discord.Color.blue())
@@ -190,6 +196,7 @@ class MyClient(discord.Client):
                 await message.channel.send(embed=eb)
             with open("LMscores.json", "r") as f:
                 data = json.load(f)
+                f.close()
                 leaders = sorted(data.items(), key=lambda x: x[1], reverse=True)
                 eb = discord.Embed(title="Last Message Of The Day Leaderboard",
                                    color=discord.Color.blue())
