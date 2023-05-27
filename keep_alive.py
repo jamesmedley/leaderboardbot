@@ -19,21 +19,18 @@ def home():
 def wakingup():
   with open("WUscores.json", "r") as f:
     data = json.load(f)
-  f.close()
   return data
 
 @app.route('/lastmessage')
 def lastmessage():
   with open("LMscores.json", "r") as f:
     data = json.load(f)
-  f.close()
   return data
 
 @app.route('/streaks')
 def streaks():
   with open("streak.json", "r") as f:
     data = json.load(f)
-  f.close()
   return data
 
 def run():
