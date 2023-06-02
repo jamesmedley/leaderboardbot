@@ -1,9 +1,9 @@
 import discord
-import json
 import os
 import re
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from threading import Thread
+from replit import db
 
 prefix = "!lb"
 WUAwaiting = False
@@ -12,22 +12,34 @@ last_message_ids = ()  # author, message
 
 class MyClient(discord.Client):
 
+    def convert_observed_dict_to_dict(self, data):
+        if isinstance(data, dict):
+            return {key: self.convert_observed_dict_to_dict(value) for key, value in data.items()}
+        elif hasattr(data, 'value'):
+            return self.convert_observed_dict_to_dict(data.value)
+        else:
+            return data
+
     async def find_LM_winner(self):
         global last_message_ids
-        message_id, user_id = last_message_ids[1], last_message_ids[0]
-        channel = client.get_channel(525730239800672257)  # general 525730239800672257
+        message_id = last_message_ids[1]
+        user_id = last_message_ids[0]
+        channel = client.get_channel(525730239800672257)  # g e n e r a l 525730239800672257
         message = await channel.fetch_message(message_id)
         await message.add_reaction("🏆")
-        winner = f"<@{user_id}>"
-        with open("LMscores.json", "r+") as f:
-            data = json.load(f)
-            data[str(user_id)] = data.get(str(user_id), 0) + 1
-            f.seek(0)
-            json.dump(data, f, indent=0)
-            f.truncate()
-        streak = self.update_streak(True, user_id)
+        winner_id = user_id
+        winner = f"<@{winner_id}>"
+
+        data = dict(db["LMscores"])
+        if str(winner_id) not in data:
+            data[str(winner_id)] = 1
+        else:
+            data[str(winner_id)] += 1
+        db["LMscores"] = data
+
+        streak = self.update_streak(True, winner_id)
         await channel.send(
-            f"{winner} has now won the Last Message Of The Day Award {data[str(user_id)]} times.    {streak}🔥")
+            f"{winner} has now won the Last Message Of The Day Award {data[str(winner_id)]} times.     {streak}🔥")
 
     async def on_ready(self):
         print(f"Logged in as {client.user}")
@@ -41,24 +53,23 @@ class MyClient(discord.Client):
         scheduler.start()
 
     def update_streak(self, lm, winner_id):
-        with open("streak.json", "r+") as f:
-            data = json.load(f)
-            if lm:
-                lm_key = "LM"
-                opponent_key = "WU"
+        data = self.convert_observed_dict_to_dict(db["streak"])
+        if lm:
+            if list(data["LM"].keys())[0] == str(winner_id):
+                data["LM"][str(winner_id)] += 1
             else:
-                lm_key = "WU"
-                opponent_key = "LM"
-            if str(winner_id) in data[lm_key]:
-                data[lm_key][str(winner_id)] += 1
+                data["LM"] = {str(winner_id): 1}
+        else:
+            if list(data["WU"].keys())[0] == str(winner_id):
+                data["WU"][str(winner_id)] += 1
             else:
-                data[lm_key] = {str(winner_id): 1}
-            if str(winner_id) in data[opponent_key]:
-                del data[opponent_key][str(winner_id)]
-            f.seek(0)
-            json.dump(data, f, indent=0)
-            f.truncate()
-        return data[lm_key][str(winner_id)]
+                data["WU"] = {str(winner_id): 1}
+
+        db["streak"] = data
+        if lm:
+            return data["LM"][str(winner_id)]
+        else:
+            return data["WU"][str(winner_id)]
 
     async def on_message(self, message):
         global WUAwaiting
@@ -80,18 +91,19 @@ class MyClient(discord.Client):
             await message.add_reaction("🏆")
             winner_id = message.author.id
             winner = f"<@{winner_id}>"
-            with open("WUscores.json", "r") as f:
-                data = json.load(f)
-                if str(winner_id) not in data:
-                    data[str(winner_id)] = 1
-                else:
-                    data[str(winner_id)] += 1
+
+            data = dict(db["WUscores"])
+            if str(winner_id) not in data:
+                data[str(winner_id)] = 1
+            else:
+                data[str(winner_id)] += 1
+            db["WUscores"] = data
+
             streak = self.update_streak(False, winner_id)
             await message.channel.send(
                 f"{winner} has now won the Waking Up Early Award {data[str(winner_id)]} times.     {streak}🔥"
             )
-            with open("WUscores.json", "w") as f:
-                json.dump(data, f, indent=0)
+
         if message.content.startswith(prefix):
             messageList = message.content.split()
             if len(messageList) == 3:
@@ -102,45 +114,38 @@ class MyClient(discord.Client):
                         return
                     winner = messageList[2]
                     winner_id = re.sub('[^0-9]', '', winner)
-                    with open("WUscores.json", "r") as f:
-                        data = json.load(f)
-                        if str(winner_id) not in data:
-                            data[str(winner_id)] = 1
-                        else:
-                            data[str(winner_id)] += 1
+                    data = dict(db["WUscores"])
+                    if str(winner_id) not in data:
+                        data[str(winner_id)] = 1
+                    else:
+                        data[str(winner_id)] += 1
+                    db["WUscores"] = data
                     streak = self.update_streak(False, winner_id)
                     await message.channel.send(
                         f"{winner} has now won the Waking Up Early Award {data[str(winner_id)]} times.     {streak}🔥")
-                    with open("WUscores.json", "w") as f:
-                        json.dump(data, f, indent=0)
                     return
                 elif messageList[1] == "lm":
                     if message.author.id != 603142766805123082 and message.author.id != 299216822647914499:
-                        await message.channel.send(
-                            "u gotta be moderator to use this pal...")
+                        await message.channel.send("u gotta be moderator to use this pal...")
                         return
                     winner = messageList[2]
                     winner_id = re.sub('[^0-9]', '', winner)
-                    with open("LMscores.json", "r") as f:
-                        data = json.load(f)
-                        if str(winner_id) not in data:
-                            data[str(winner_id)] = 1
-                        else:
-                            data[str(winner_id)] += 1
+                    data = dict(db["LMscores"])
+                    if str(winner_id) not in data:
+                        data[str(winner_id)] = 1
+                    else:
+                        data[str(winner_id)] += 1
+                    db["LMscores"] = data
                     streak = self.update_streak(True, winner_id)
                     await message.channel.send(
-                        f"{winner} has now won the Last Message Of The Day Award {data[str(winner_id)]} times.     {streak}🔥"
-                    )
-                    with open("LMscores.json", "w") as f:
-                        json.dump(data, f, indent=0)
+                        f"{winner} has now won the Last Message Of The Day Award {data[str(winner_id)]} times.     {streak}🔥")
                     return
                 else:
                     return
 
             if len(messageList) == 2:
                 if messageList[1] == "s":
-                    with open("streak.json", "r") as f:
-                        data = json.load(f)
+                    data = self.convert_observed_dict_to_dict(db["streak"])
                     lm_user = list(data["LM"].keys())[0]
                     wu_user = list(data["WU"].keys())[0]
                     lm_streak = data["LM"][str(lm_user)]
@@ -157,46 +162,41 @@ class MyClient(discord.Client):
                     await message.channel.send(embed=eb)
                     return
 
-            with open("WUscores.json", "r") as f:
-                data = json.load(f)
-                leaders = sorted(data.items(), key=lambda x: x[1], reverse=True)
-                eb = discord.Embed(title="Waking Up Early Award Leaderboard",
-                                   color=discord.Color.blue())
-                for i in range(min(10, len(leaders))):
-                    position = str(int(i + 1))
-                    if position == "1":
-                        position = "1st 🥇"
-                    elif position == "2":
-                        position = "2nd 🥈"
-                    elif position == "3":
-                        position = "3rd 🥉"
-                    else:
-                        position = position + "th"
-                    eb.add_field(
-                        name=f"{position}",
-                        value=f"<@{int(leaders[i][0])}> with {leaders[i][1]} wins",
-                        inline=False)
-                await message.channel.send(embed=eb)
-            with open("LMscores.json", "r") as f:
-                data = json.load(f)
-                leaders = sorted(data.items(), key=lambda x: x[1], reverse=True)
-                eb = discord.Embed(title="Last Message Of The Day Leaderboard",
-                                   color=discord.Color.blue())
-                for i in range(min(10, len(leaders))):
-                    position = str(int(i + 1))
-                    if position == "1":
-                        position = "1st 🥇"
-                    elif position == "2":
-                        position = "2nd 🥈"
-                    elif position == "3":
-                        position = "3rd 🥉"
-                    else:
-                        position = position + "th"
-                    eb.add_field(
-                        name=f"{position}",
-                        value=f"<@{int(leaders[i][0])}> with {leaders[i][1]} wins",
-                        inline=False)
-                await message.channel.send(embed=eb)
+            data = dict(db["WUscores"])
+            leaders = sorted(data.items(), key=lambda x: x[1], reverse=True)
+            eb = discord.Embed(title="Waking Up Early Award Leaderboard", color=discord.Color.blue())
+            for i in range(min(10, len(leaders))):
+                position = str(int(i + 1))
+                if position == "1":
+                    position = "1st 🥇"
+                elif position == "2":
+                    position = "2nd 🥈"
+                elif position == "3":
+                    position = "3rd 🥉"
+                else:
+                    position = position + "th"
+                eb.add_field(
+                    name=f"{position}",
+                    value=f"<@{int(leaders[i][0])}> with {leaders[i][1]} wins", inline=False)
+            await message.channel.send(embed=eb)
+
+            data = dict(db["LMscores"])
+            leaders = sorted(data.items(), key=lambda x: x[1], reverse=True)
+            eb = discord.Embed(title="Last Message Of The Day Leaderboard", color=discord.Color.blue())
+            for i in range(min(10, len(leaders))):
+                position = str(int(i + 1))
+                if position == "1":
+                    position = "1st 🥇"
+                elif position == "2":
+                    position = "2nd 🥈"
+                elif position == "3":
+                    position = "3rd 🥉"
+                else:
+                    position = position + "th"
+                eb.add_field(
+                    name=f"{position}",
+                    value=f"<@{int(leaders[i][0])}> with {leaders[i][1]} wins", inline=False)
+            await message.channel.send(embed=eb)
 
 
 intents = discord.Intents.default()

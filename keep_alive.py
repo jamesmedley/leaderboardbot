@@ -1,6 +1,14 @@
 from flask import Flask
 from threading import Thread
-import json
+from replit import db
+
+def convert_observed_dict_to_dict(data):
+    if isinstance(data, dict):
+        return {key: convert_observed_dict_to_dict(value) for key, value in data.items()}
+    elif hasattr(data, 'value'):
+        return convert_observed_dict_to_dict(data.value)
+    else:
+        return data
 
 app = Flask(' ')
 
@@ -17,21 +25,15 @@ def home():
 
 @app.route('/wakingup')
 def wakingup():
-  with open("WUscores.json", "r") as f:
-    data = json.load(f)
-  return data
+  return dict(db["WUscores"])
 
 @app.route('/lastmessage')
 def lastmessage():
-  with open("LMscores.json", "r") as f:
-    data = json.load(f)
-  return data
+  return dict(db["LMscores"])
 
 @app.route('/streaks')
 def streaks():
-  with open("streak.json", "r") as f:
-    data = json.load(f)
-  return data
+  return convert_observed_dict_to_dict(db["streak"])
 
 def run():
   app.run(host = "0.0.0.0", port = 8081)

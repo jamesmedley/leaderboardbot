@@ -18,7 +18,6 @@ def handle_crash():
     with open("logs.txt", "a") as file:
         file.write(f"CRASH, {datetime.datetime.now()}\n")
     sleep(restart_timer)
-
     start_script()
 
 
