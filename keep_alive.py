@@ -1,6 +1,7 @@
-from flask import Flask
+from flask import Flask, render_template, send_from_directory
 from threading import Thread
 from replit import db
+
 
 def convert_observed_dict_to_dict(data):
     if isinstance(data, dict):
@@ -10,34 +11,39 @@ def convert_observed_dict_to_dict(data):
     else:
         return data
 
+
 app = Flask(' ')
+
 
 @app.route('/')
 def home():
-    return """
-    <h1>Leaderboard bot</h1>
-    <ul>
-        <li><a href="/wakingup">Waking Up Award</a></li>
-        <li><a href="/lastmessage">Last Message Of The Day</a></li>
-        <li><a href="/streaks">Streaks</a></li>
-    </ul>
-    """
+    return render_template('index.html')
+
+
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    return send_from_directory('static', filename)
+
 
 @app.route('/wakingup')
 def wakingup():
-  return dict(db["WUscores"])
+    return dict(db["WUscores"])
+
 
 @app.route('/lastmessage')
 def lastmessage():
-  return dict(db["LMscores"])
+    return dict(db["LMscores"])
+
 
 @app.route('/streaks')
 def streaks():
-  return convert_observed_dict_to_dict(db["streak"])
+    return convert_observed_dict_to_dict(db["streak"])
+
 
 def run():
-  app.run(host = "0.0.0.0", port = 8081)
+    app.run(host="0.0.0.0", port=8081)
+
 
 def keep_alive():
-  t= Thread(target=run)
-  t.start()
+    t = Thread(target=run)
+    t.start()

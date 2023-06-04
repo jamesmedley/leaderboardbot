@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" type="text/css" href="/static/style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: center; /* Center horizontally */
+            margin-bottom: 20px;
+            padding: 20px;
+            background-color: #f2f2f2;
+        }
+
+        .header img {
+            margin-right: 10px;
+            margin-left: -20px; /* Adjust image placement */
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* Center horizontally */
+        }
+
+        ul li {
+            margin-bottom: 10px;
+        }
+
+        ul li a {
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+        }
+
+        ul li a:hover {
+            color: #000;
+        }
+
+        .footer {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f2f2f2;
+            text-align: center;
+        }
+
+        .footer a {
+            color: #333;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="/static/podium.png" alt="logo" width="100" height="100">
+        <h1>Leaderboard Bot</h1>
+    </div>
+    <ul>
+        <li><a href="/wakingup">Waking Up Award</a></li>
+        <li><a href="/lastmessage">Last Message Of The Day</a></li>
+        <li><a href="/streaks">Streaks</a></li>
+    </ul>
+    <div class="footer">
+        <a href="https://www.flaticon.com/free-icon/podium_1386734?term=leaderboard&page=1&position=49&origin=search&related_id=1386734https://www.flaticon.com/free-icons/podium" title="Podium icons">Leaderboard icons created by Freepik - Flaticon</a>
+    </div>
+</body>
+</html>
