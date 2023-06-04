@@ -65,14 +65,14 @@ def update_scheduler(scheduler):
     scheduler.start()
 
 
-async def awardWin(award, db_key, winner_id, channel):
+async def awardWin(award, db_key, winner_id, channel, lm):
     data = dict(db[db_key])
     if str(winner_id) not in data:
         data[str(winner_id)] = 1
     else:
         data[str(winner_id)] += 1
     db[db_key] = data
-    streak = update_streak(True, winner_id)
+    streak = update_streak(lm, winner_id)
     winner = f"<@{winner_id}>"
     await channel.send(
         f"{winner} has now won the {award} Award {data[str(winner_id)]} times.     {streak}🔥")
@@ -87,7 +87,7 @@ async def find_LM_winner():
     await message.add_reaction("🏆")
     winner_id = user_id
     award = "Last Message Of The Day"
-    await awardWin(award, "LMscores", winner_id, channel)
+    await awardWin(award, "LMscores", winner_id, channel, True)
 
 
 def leaderboard_embed(title, db_key, user_info):
@@ -161,6 +161,7 @@ class MyClient(discord.Client):
 
             view = discord.ui.View()
             view.add_item(select)
+
             await interaction.response.edit_message(embed=embed, view=view)
 
     async def get_user_pfp(self, user_id):
@@ -197,7 +198,7 @@ class MyClient(discord.Client):
             await message.add_reaction("🏆")
             winner_id = message.author.id
             award = "Waking Up Early"
-            await awardWin(award, "WUscores", winner_id, message.channel)
+            await awardWin(award, "WUscores", winner_id, message.channel, False)
         if message.content.startswith(prefix):
             user_info = [await self.get_user_username(message.author.id), await self.get_user_pfp(message.author.id),
                          await self.get_user_pfp(895026694757445694)]
@@ -230,10 +231,12 @@ class MyClient(discord.Client):
                     if messageList[1] == "wu":
                         award = "Waking Up Early"
                         db_key = "WUscores"
+                        lm = False
                     else:
                         award = "Last Message Of The Day"
                         db_key = "LMscores"
-                    await awardWin(award, db_key, winner_id, message.channel)
+                        lm = True
+                    await awardWin(award, db_key, winner_id, message.channel, lm)
 
 
 intents = discord.Intents.default()
