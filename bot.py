@@ -2,42 +2,23 @@ import discord
 import os
 import re
 import requests
+import datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from threading import Thread
 from replit import db
 
 prefix = "!lb"
-WUAwaiting = False
+wua_waiting = False
 last_message_ids = ()  # author, message
 
 
-async def sendLeaderboard(title, db_key, message):
-    data = dict(db[db_key])
-    leaders = sorted(data.items(), key=lambda x: x[1], reverse=True)
-    eb = discord.Embed(title=title, color=discord.Color.blue())
-    for i in range(min(10, len(leaders))):
-        position = str(int(i + 1))
-        if position == "1":
-            position = "1st 🥇"
-        elif position == "2":
-            position = "2nd 🥈"
-        elif position == "3":
-            position = "3rd 🥉"
-        else:
-            position = position + "th"
-        eb.add_field(
-            name=f"{position}",
-            value=f"<@{int(leaders[i][0])}> with {leaders[i][1]} wins", inline=False)
-    await message.channel.send(embed=eb)
-
-
-async def sendStreakHolders(message):
+async def sendStreakHolders(message, user_info):
     data = convert_observed_dict_to_dict(db["streak"])
     lm_user = list(data["LM"].keys())[0]
     wu_user = list(data["WU"].keys())[0]
     lm_streak = data["LM"][str(lm_user)]
     wu_streak = data["WU"][str(wu_user)]
-    eb = discord.Embed(title="Current Streak Holders", color=discord.Color.blue())
+    eb = discord.Embed(title="Current Streak Holders", color=discord.Color.blue(), timestamp=datetime.datetime.utcnow())
     eb.add_field(
         name="Waking Up Award",
         value=f"<@{int(wu_user)}> with {wu_streak}🔥",
@@ -46,6 +27,8 @@ async def sendStreakHolders(message):
         name="Last Message Of The Day",
         value=f"<@{int(lm_user)}> with {lm_streak}🔥",
         inline=False)
+    eb.set_footer(text=user_info[0], icon_url=user_info[1])
+    eb.set_thumbnail(url=user_info[2])
     await message.channel.send(embed=eb)
 
 
@@ -107,7 +90,88 @@ async def find_LM_winner():
     await awardWin(award, "LMscores", winner_id, channel)
 
 
+def leaderboard_embed(title, db_key, user_info):
+    data = dict(db[db_key])
+    leaders = sorted(data.items(), key=lambda x: x[1], reverse=True)
+    eb = discord.Embed(title=title, color=discord.Color.blue(), url="https://en.wikipedia.org/wiki/Among_Us",
+                       timestamp=datetime.datetime.utcnow())
+    for i in range(min(10, len(leaders))):
+        position = str(int(i + 1))
+        if position == "1":
+            position = "1st 🥇"
+        elif position == "2":
+            position = "2nd 🥈"
+        elif position == "3":
+            position = "3rd 🥉"
+        else:
+            position = position + "th"
+        eb.add_field(
+            name=f"{position}",
+            value=f"<@{int(leaders[i][0])}> with {leaders[i][1]} wins", inline=False)
+    eb.set_footer(text=user_info[0], icon_url=user_info[1])
+    eb.set_thumbnail(url=user_info[2])
+    return eb
+
+
+async def sendLeaderboard(title, db_key, message, user_info):
+    eb = leaderboard_embed(title, db_key, user_info)
+    options = [
+        discord.SelectOption(label='Waking Up Early Award Leaderboard', value='1', emoji="🌇"),
+        discord.SelectOption(label='Last Message Of The Day Leaderboard', value='2', emoji="🌃")
+    ]
+
+    select = discord.ui.Select(
+        placeholder="🌇 Waking Up Early Award Leaderboard 🌇",
+        options=options,
+        custom_id='select_menu'
+    )
+
+    view = discord.ui.View()
+    view.add_item(select)
+
+    await message.channel.send(embed=eb, view=view)
+
+
 class MyClient(discord.Client):
+
+    async def on_interaction(self, interaction):
+        if isinstance(interaction, discord.Interaction) and interaction.data['custom_id'] == 'select_menu':
+            user_info = [await self.get_user_username(interaction.user.id),
+                         await self.get_user_pfp(interaction.user.id),
+                         await self.get_user_pfp(895026694757445694)]
+            selected_option = interaction.data['values'][0]
+            if selected_option == '1':
+                embed = leaderboard_embed("🌇 Waking Up Early Award Leaderboard 🌇", "WUscores", user_info)
+                placeholder = "🌇 Waking Up Early Award Leaderboard 🌇"
+            elif selected_option == '2':
+                embed = leaderboard_embed("🌃 Last Message Of The Day Leaderboard 🌃", "LMscores", user_info)
+                placeholder = "🌃 Last Message Of The Day Leaderboard 🌃"
+            else:
+                embed = leaderboard_embed("🌇 Waking Up Early Award Leaderboard 🌇", "WUscores", user_info)
+                placeholder = "🌇 Waking Up Early Award Leaderboard 🌇"
+
+            select = discord.ui.Select(
+                placeholder=placeholder,
+                options=[
+                    discord.SelectOption(label='Waking Up Early Award Leaderboard', value='1', emoji="🌇"),
+                    discord.SelectOption(label='Last Message Of The Day Leaderboard', value='2', emoji="🌃")
+                ],
+                custom_id='select_menu'
+            )
+
+            view = discord.ui.View()
+            view.add_item(select)
+            await interaction.response.edit_message(embed=embed, view=view)
+
+    async def get_user_pfp(self, user_id):
+        user = await self.fetch_user(user_id)
+        pfp_url = str(user.avatar)
+        return pfp_url
+
+    async def get_user_username(self, user_id):
+        user = await self.fetch_user(user_id)
+        username = f"{user.name}#{user.discriminator}"
+        return username
 
     async def on_ready(self):
         print(f"Logged in as {client.user}")
@@ -118,7 +182,7 @@ class MyClient(discord.Client):
         thread.start()
 
     async def on_message(self, message):
-        global WUAwaiting
+        global wua_waiting
         global last_message_ids
         if message.channel.id == 525730239800672257:  # 525730239800672257:
             last_message_ids = (message.author.id, message.id)
@@ -126,21 +190,22 @@ class MyClient(discord.Client):
             await message.add_reaction("❤️")
         if message.author == client.user:
             return
-        if not WUAwaiting and message.author.id == 748488791471161405:  # WU bot id: 748488791471161405
-            WUAwaiting = True
-        if WUAwaiting and message.author.id != 748488791471161405 and message.channel.id == 525730239800672257:
-            WUAwaiting = False
+        if not wua_waiting and message.author.id == 748488791471161405:  # WU bot id: 748488791471161405
+            wua_waiting = True
+        if wua_waiting and message.author.id != 748488791471161405 and message.channel.id == 525730239800672257:
+            wua_waiting = False
             await message.add_reaction("🏆")
             winner_id = message.author.id
             award = "Waking Up Early"
             await awardWin(award, "WUscores", winner_id, message.channel)
         if message.content.startswith(prefix):
+            user_info = [await self.get_user_username(message.author.id), await self.get_user_pfp(message.author.id),
+                         await self.get_user_pfp(895026694757445694)]
             messageList = message.content.split()
             if len(messageList) == 1:
-                await sendLeaderboard("Waking Up Early Award Leaderboard", "WUscores", message)
-                await sendLeaderboard("Last Message Of The Day Leaderboard", "LMscores", message)
+                await sendLeaderboard("🌇 Waking Up Early Award Leaderboard 🌇", "WUscores", message, user_info)
             elif len(messageList) == 2 and messageList[1] == "s":
-                await sendStreakHolders(message)
+                await sendStreakHolders(message, user_info)
             elif len(messageList) == 3:
                 moderator_ids = [603142766805123082, 299216822647914499]
                 if messageList[1] == "wu" or messageList[1] == "lm":
@@ -160,7 +225,7 @@ class MyClient(discord.Client):
                     winner = messageList[2]
                     winner_id = re.sub("[^0-9]", '', winner)
                     if len(str(winner_id)) != 18:
-                        await message.channel.send(f"Invalid User ID: {winner_id}")
+                        await message.channel.send(f"Invalid User ID: {winner}")
                         return
                     if messageList[1] == "wu":
                         award = "Waking Up Early"
