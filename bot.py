@@ -1,6 +1,7 @@
 import discord
 import os
 import re
+import requests
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from threading import Thread
 from replit import db
@@ -144,10 +145,23 @@ class MyClient(discord.Client):
                 moderator_ids = [603142766805123082, 299216822647914499]
                 if messageList[1] == "wu" or messageList[1] == "lm":
                     if message.author.id not in moderator_ids:
-                        await message.channel.send("L")
+                        api_key = os.getenv("GIPHY")
+                        response = requests.get(f"https://api.giphy.com/v1/gifs/random?api_key={api_key}&tag=clown")
+                        if response.status_code == 200:
+                            data = response.json()
+                            if "data" in data and "url" in data["data"]:
+                                gif_url = data["data"]["url"]
+                                await message.channel.send(gif_url)
+                            else:
+                                await message.channel.send("dont be naughty!")
+                        else:
+                            await message.channel.send("dont be naughty!")
                         return
                     winner = messageList[2]
                     winner_id = re.sub("[^0-9]", '', winner)
+                    if len(str(winner_id)) != 18:
+                        await message.channel.send(f"Invalid User ID: {winner_id}")
+                        return
                     if messageList[1] == "wu":
                         award = "Waking Up Early"
                         db_key = "WUscores"
