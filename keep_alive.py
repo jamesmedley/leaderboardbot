@@ -57,13 +57,15 @@ def static_files(filename):
 @app.route("/wakingup")
 def wakingup():
     users_info = sort_leaderboard("WUscores")
-    return render_template("leaderboard.html", leaderboard=users_info, title="Waking Up Early Award")
+    return render_template("leaderboard.html", leaderboard=users_info, title="Waking Up Early Award",
+                           tab_title="Waking Up Leaderboard")
 
 
 @app.route("/lastmessage")
 def lastmessage():
     users_info = sort_leaderboard("LMscores")
-    return render_template("leaderboard.html", leaderboard=users_info, title="Last Message Of The Day Award")
+    return render_template("leaderboard.html", leaderboard=users_info, title="Last Message Of The Day Award",
+                           tab_title="Last Message Leaderboard")
 
 
 @app.route("/streaks")
