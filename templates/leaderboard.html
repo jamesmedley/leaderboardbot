@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" type="text/css" href="/static/style.css">
+    <style>
+        /* Add any additional styling for the leaderboard here */
+        body {
+            background-color: #f4f4f4;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            background-color: #333;
+            color: #fff;
+        }
+
+        .header img {
+            margin-right: 10px;
+            width: 80px;
+            height: 80px;
+        }
+
+        .leaderboard {
+            width: 80%;
+            margin: 20px auto;
+            background-color: #fff;
+            border-collapse: collapse;
+        }
+
+        .leaderboard th {
+            padding: 15px;
+            background-color: #555;
+            color: #fff;
+        }
+
+        .leaderboard td {
+            padding: 15px;
+        }
+
+        .leaderboard tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        .leaderboard .username {
+            display: flex;
+            align-items: center;
+        }
+
+        .leaderboard img {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .footer {
+            padding: 10px;
+            text-align: center;
+            background-color: #333;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="/static/podium.png" alt="logo">
+        <h1>Leaderboard Bot - {{title}}</h1>
+    </div>
+    <table class="leaderboard">
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Wins</th>
+            </tr>
+        </thead>
+        <tbody>
+              {% for username, profile_picture, score in leaderboard %}
+                <tr>
+                    <td>
+                        <div class="username">
+                            <img src="{{ profile_picture }}" alt="Profile Picture">
+                            <span>{{ username }}</span>
+                        </div>
+                    </td>
+                    <td>{{ score }}</td>
+                </tr>
+              {% endfor %}
+        </tbody>
+    </table>
+    <div class="footer">
+        <a href="https://www.flaticon.com/free-icon/podium_1386734?term=leaderboard&page=1&position=49&origin=search&related_id=1386734https://www.flaticon.com/free-icons/podium" title="Podium icons">Leaderboard icons created by Freepik - Flaticon</a>
+    </div>
+</body>
+</html>
