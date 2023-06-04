@@ -18,14 +18,17 @@ async def sendStreakHolders(message, user_info):
     wu_user = list(data["WU"].keys())[0]
     lm_streak = data["LM"][str(lm_user)]
     wu_streak = data["WU"][str(wu_user)]
-    eb = discord.Embed(title="Current Streak Holders", color=discord.Color.blue(), timestamp=datetime.datetime.utcnow())
+    eb = discord.Embed(title="**Current Streak Holders**",
+                       color=discord.Color.from_rgb(255, 88, 62),
+                       url="https://en.wikipedia.org/wiki/Among_Us",
+                       timestamp=datetime.datetime.utcnow())
     eb.add_field(
-        name="Waking Up Award",
-        value=f"<@{int(wu_user)}> with {wu_streak}🔥",
+        name="**Waking Up Award**",
+        value=f"<@{int(wu_user)}> with **{wu_streak}**🔥",
         inline=False)
     eb.add_field(
-        name="Last Message Of The Day",
-        value=f"<@{int(lm_user)}> with {lm_streak}🔥",
+        name="**Last Message Of The Day**",
+        value=f"<@{int(lm_user)}> with **{lm_streak}**🔥",
         inline=False)
     eb.set_footer(text=user_info[0], icon_url=user_info[1])
     eb.set_thumbnail(url=user_info[2])
@@ -35,7 +38,7 @@ async def sendStreakHolders(message, user_info):
 def convert_observed_dict_to_dict(data):
     if isinstance(data, dict):
         return {key: convert_observed_dict_to_dict(value) for key, value in data.items()}
-    elif hasattr(data, 'value'):
+    elif hasattr(data, "value"):
         return convert_observed_dict_to_dict(data.value)
     else:
         return data
@@ -75,7 +78,7 @@ async def awardWin(award, db_key, winner_id, channel, lm):
     streak = update_streak(lm, winner_id)
     winner = f"<@{winner_id}>"
     await channel.send(
-        f"{winner} has now won the {award} Award {data[str(winner_id)]} times.     {streak}🔥")
+        f"{winner} has now won the {award} Award **{data[str(winner_id)]}** times.     **{streak}**🔥")
 
 
 async def find_LM_winner():
@@ -85,15 +88,16 @@ async def find_LM_winner():
     channel = client.get_channel(525730239800672257)  # g e n e r a l 525730239800672257
     message = await channel.fetch_message(message_id)
     await message.add_reaction("🏆")
-    winner_id = user_id
     award = "Last Message Of The Day"
-    await awardWin(award, "LMscores", winner_id, channel, True)
+    await awardWin(award, "LMscores", user_id, channel, True)
 
 
 def leaderboard_embed(title, db_key, user_info):
     data = dict(db[db_key])
     leaders = sorted(data.items(), key=lambda x: x[1], reverse=True)
-    eb = discord.Embed(title=title, color=discord.Color.blue(), url="https://en.wikipedia.org/wiki/Among_Us",
+    eb = discord.Embed(title=f"**{title}**",
+                       color=discord.Color.from_rgb(255, 88, 62),
+                       url="https://en.wikipedia.org/wiki/Among_Us",
                        timestamp=datetime.datetime.utcnow())
     for i in range(min(10, len(leaders))):
         position = str(int(i + 1))
@@ -106,8 +110,8 @@ def leaderboard_embed(title, db_key, user_info):
         else:
             position = position + "th"
         eb.add_field(
-            name=f"{position}",
-            value=f"<@{int(leaders[i][0])}> with {leaders[i][1]} wins", inline=False)
+            name=f"**{position}**",
+            value=f"<@{int(leaders[i][0])}> with **{leaders[i][1]}** wins", inline=False)
     eb.set_footer(text=user_info[0], icon_url=user_info[1])
     eb.set_thumbnail(url=user_info[2])
     return eb
@@ -116,14 +120,14 @@ def leaderboard_embed(title, db_key, user_info):
 async def sendLeaderboard(title, db_key, message, user_info):
     eb = leaderboard_embed(title, db_key, user_info)
     options = [
-        discord.SelectOption(label='Waking Up Early Award Leaderboard', value='1', emoji="🌇"),
-        discord.SelectOption(label='Last Message Of The Day Leaderboard', value='2', emoji="🌃")
+        discord.SelectOption(label="Waking Up Early Award Leaderboard", value="1", emoji="🌇", default=True),
+        discord.SelectOption(label="Last Message Of The Day Leaderboard", value="2", emoji="🌃", default=False)
     ]
 
     select = discord.ui.Select(
         placeholder="🌇 Waking Up Early Award Leaderboard 🌇",
         options=options,
-        custom_id='select_menu'
+        custom_id="select_menu",
     )
 
     view = discord.ui.View()
@@ -135,15 +139,15 @@ async def sendLeaderboard(title, db_key, message, user_info):
 class MyClient(discord.Client):
 
     async def on_interaction(self, interaction):
-        if isinstance(interaction, discord.Interaction) and interaction.data['custom_id'] == 'select_menu':
+        if isinstance(interaction, discord.Interaction) and interaction.data["custom_id"] == "select_menu":
             user_info = [await self.get_user_username(interaction.user.id),
                          await self.get_user_pfp(interaction.user.id),
                          await self.get_user_pfp(895026694757445694)]
-            selected_option = interaction.data['values'][0]
-            if selected_option == '1':
+            selected_option = interaction.data["values"][0]
+            if selected_option == "1":
                 embed = leaderboard_embed("🌇 Waking Up Early Award Leaderboard 🌇", "WUscores", user_info)
                 placeholder = "🌇 Waking Up Early Award Leaderboard 🌇"
-            elif selected_option == '2':
+            elif selected_option == "2":
                 embed = leaderboard_embed("🌃 Last Message Of The Day Leaderboard 🌃", "LMscores", user_info)
                 placeholder = "🌃 Last Message Of The Day Leaderboard 🌃"
             else:
@@ -153,10 +157,12 @@ class MyClient(discord.Client):
             select = discord.ui.Select(
                 placeholder=placeholder,
                 options=[
-                    discord.SelectOption(label='Waking Up Early Award Leaderboard', value='1', emoji="🌇"),
-                    discord.SelectOption(label='Last Message Of The Day Leaderboard', value='2', emoji="🌃")
+                    discord.SelectOption(label="Waking Up Early Award Leaderboard", value="1", emoji="🌇",
+                                         default=selected_option == "1"),
+                    discord.SelectOption(label="Last Message Of The Day Leaderboard", value="2", emoji="🌃",
+                                         default=selected_option == "2")
                 ],
-                custom_id='select_menu'
+                custom_id="select_menu",
             )
 
             view = discord.ui.View()
@@ -224,7 +230,7 @@ class MyClient(discord.Client):
                             await message.channel.send("dont be naughty!")
                         return
                     winner = messageList[2]
-                    winner_id = re.sub("[^0-9]", '', winner)
+                    winner_id = re.sub("[^0-9]", "", winner)
                     if len(str(winner_id)) != 18:
                         await message.channel.send(f"Invalid User ID: {winner}")
                         return
