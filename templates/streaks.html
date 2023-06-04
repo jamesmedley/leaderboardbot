@@ -26,34 +26,35 @@
             height: 80px;
         }
 
-        .leaderboard {
-            width: 30%;
+        .streak-table {
+            width: 40%;
             margin: 20px auto;
             background-color: #fff;
             border-collapse: collapse;
         }
 
-        .leaderboard th {
+        .streak-table th {
             padding: 15px;
             background-color: #555;
             color: #fff;
         }
 
-        .leaderboard td {
+        .streak-table td {
             padding: 15px;
             text-align: center;
         }
 
-        .leaderboard tr:nth-child(even) {
+        .streak-table tr:nth-child(even) {
             background-color: #f2f2f2;
         }
 
-        .leaderboard .username {
+        .streak-table .profile {
             display: flex;
             align-items: center;
+            justify-content: center;
         }
 
-        .leaderboard .username img {
+        .streak-table .profile img {
             width: 30px;
             height: 30px;
             border-radius: 50%;
@@ -74,25 +75,35 @@
         <img src="/static/podium.png" alt="logo">
         <h1>Leaderboard Bot - {{ title }}</h1>
     </div>
-    <table class="leaderboard">
+    <table class="streak-table">
         <thead>
             <tr>
+                <th>Award</th>
                 <th>Username</th>
-                <th>Wins</th>
+                <th>Streak</th>
             </tr>
         </thead>
         <tbody>
-            {% for username, profile_picture, score in leaderboard %}
-                <tr>
-                    <td>
-                        <div class="username">
-                            <img src="{{ profile_picture }}" alt="Profile Picture">
-                            <span>{{ username }}</span>
-                        </div>
-                    </td>
-                    <td>{{ score }}</td>
-                </tr>
-            {% endfor %}
+            <tr>
+                <td>{{ lm.award }}</td>
+                <td>
+                    <div class="profile">
+                        <img src="{{ lm.profile_picture }}" alt="Profile Picture">
+                        <span>{{ lm.username }}</span>
+                    </div>
+                </td>
+                <td>{{ lm.streak }}</td>
+            </tr>
+            <tr>
+                <td>{{ wu.award }}</td>
+                <td>
+                    <div class="profile">
+                        <img src="{{ wu.profile_picture }}" alt="Profile Picture">
+                        <span>{{ wu.username }}</span>
+                    </div>
+                </td>
+                <td>{{ wu.streak }}</td>
+            </tr>
         </tbody>
     </table>
     <div class="footer">

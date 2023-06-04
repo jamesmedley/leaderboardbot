@@ -30,6 +30,17 @@ def get_user_info(user_id):
     return None
 
 
+def sort_leaderboard(db_key):
+    last_message_scores = dict(db[db_key])
+    sorted_scores = sorted(last_message_scores.items(), key=lambda x: x[1], reverse=True)
+    users_info = []
+    for user_id, score in sorted_scores:
+        user_info = get_user_info(user_id)
+        if user_info:
+            users_info.append((user_info["username"], user_info["profile_picture"], score))
+    return users_info
+
+
 app = Flask(" ")
 
 
@@ -45,31 +56,30 @@ def static_files(filename):
 
 @app.route("/wakingup")
 def wakingup():
-    last_message_scores = dict(db["WUscores"])
-    sorted_scores = sorted(last_message_scores.items(), key=lambda x: x[1], reverse=True)
-    users_info = []
-    for user_id, score in sorted_scores:
-        user_info = get_user_info(user_id)
-        if user_info:
-            users_info.append((user_info["username"], user_info["profile_picture"], score))
+    users_info = sort_leaderboard("WUscores")
     return render_template("leaderboard.html", leaderboard=users_info, title="Waking Up Early Award")
 
 
 @app.route("/lastmessage")
 def lastmessage():
-    last_message_scores = dict(db["LMscores"])
-    sorted_scores = sorted(last_message_scores.items(), key=lambda x: x[1], reverse=True)
-    users_info = []
-    for user_id, score in sorted_scores:
-        user_info = get_user_info(user_id)
-        if user_info:
-            users_info.append((user_info["username"], user_info["profile_picture"], score))
+    users_info = sort_leaderboard("LMscores")
     return render_template("leaderboard.html", leaderboard=users_info, title="Last Message Of The Day Award")
 
 
 @app.route("/streaks")
 def streaks():
-    return convert_observed_dict_to_dict(db["streak"])
+    streaks_data = convert_observed_dict_to_dict(db["streak"])
+    lm_streak_holder_id = list(streaks_data["LM"].keys())[0]
+    wu_streak_holder_id = list(streaks_data["WU"].keys())[0]
+    lm_user_info = get_user_info(lm_streak_holder_id)
+    wu_user_info = get_user_info(wu_streak_holder_id)
+    lm_streak = streaks_data["LM"][lm_streak_holder_id]
+    wu_streak = streaks_data["WU"][wu_streak_holder_id]
+    lm_data = {"username": lm_user_info["username"], "profile_picture": lm_user_info["profile_picture"],
+               "streak": lm_streak, "award": "Last Message Of The Day"}
+    wu_data = {"username": wu_user_info["username"], "profile_picture": wu_user_info["profile_picture"],
+               "streak": wu_streak, "award": "Waking Up Early Award"}
+    return render_template('streaks.html', lm=lm_data, wu=wu_data, title="Streaks")
 
 
 def run():
