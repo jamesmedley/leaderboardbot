@@ -6,7 +6,9 @@ import datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from replit import db
 import asyncio
-
+from user_performance import performance_analysis
+import discord_user_data
+import math
 
 prefix = "!lb"
 wua_waiting = False
@@ -44,6 +46,7 @@ def convert_observed_dict_to_dict(data):
     else:
         return data
 
+
 def convert_observed_list_to_list(data):
     if isinstance(data, dict):
         return {key: convert_observed_dict_to_dict(value) for key, value in data.items()}
@@ -54,7 +57,6 @@ def convert_observed_list_to_list(data):
             return tuple(convert_observed_dict_to_dict(item) for item in data.value)
     else:
         return data
-
 
 
 def update_streak(lm, winner_id):
@@ -91,10 +93,14 @@ async def awardWin(award, db_key, winner_id, channel, lm):
         data[str(winner_id)][0].append(formatted_date)
         data[str(winner_id)][1] += 1
     db[db_key] = data
+    if lm:
+        db["LM_by_date"][formatted_date] = winner_id
+    else:
+        db["WU_by_date"][formatted_date] = winner_id
     streak = update_streak(lm, winner_id)
     winner = f"<@{winner_id}>"
     await channel.send(
-        f"{winner} has now won the {award} Award **{data[str(winner_id)]}** times.     **{streak}**🔥")
+        f"{winner} has now won the {award} Award **{data[str(winner_id)][1]}** times.     **{streak}**🔥")
 
 
 async def find_LM_winner():
@@ -152,13 +158,42 @@ async def sendLeaderboard(title, db_key, message, user_info):
     await message.channel.send(embed=eb, view=view)
 
 
+async def send_user_analysis(user_id, user_info, message):
+    lm_win_rate = performance_analysis.find_user_win_rate_lm(user_id)
+    wu_win_rate = performance_analysis.find_user_win_rate_wu(user_id)
+    username = discord_user_data.get_user_info(user_id)["username"]
+    eb = discord.Embed(title=f"**Performance Analysis For** {username}",
+                       color=discord.Color.from_rgb(255, 88, 62),
+                       url="https://en.wikipedia.org/wiki/Among_Us",
+                       timestamp=datetime.datetime.utcnow())
+
+    eb.add_field(
+        name=f"**Waking Up Early Award**",
+        value=f"Current win rate: {round_to_3sf(wu_win_rate * 100)}%", inline=False)
+    eb.add_field(
+        name=f"**Last Message Of The Day Award**",
+        value=f"Current win rate: {round_to_3sf(lm_win_rate * 100)}%", inline=False)
+
+    eb.set_footer(text=user_info[0], icon_url=user_info[1])
+    eb.set_thumbnail(url=user_info[2])
+    await message.channel.send(embed=eb)
+
+
+def round_to_3sf(number):
+    rounded_number = round(number, -int(math.floor(math.log10(abs(number)))) + 2)
+    formatted_number = '{:g}'.format(rounded_number)
+    return formatted_number
+
+
 class MyClient(discord.Client):
 
     async def on_interaction(self, interaction):
         if isinstance(interaction, discord.Interaction) and interaction.data["custom_id"] == "select_menu":
-            user_info = [await self.get_user_username(interaction.user.id),
-                         await self.get_user_pfp(interaction.user.id),
-                         await self.get_user_pfp(895026694757445694)]
+            interaction_user_info = discord_user_data.get_user_info(interaction.user.id)
+            bot_user_info = discord_user_data.get_user_info(895026694757445694)
+            user_info = [interaction_user_info["username"],
+                         interaction_user_info["profile_picture"],
+                         bot_user_info["profile_picture"]]
             selected_option = interaction.data["values"][0]
             if selected_option == "1":
                 embed = leaderboard_embed("🌇 Waking Up Early Award Leaderboard 🌇", "WU_scores", user_info)
@@ -186,15 +221,6 @@ class MyClient(discord.Client):
 
             await interaction.response.edit_message(embed=embed, view=view)
 
-    async def get_user_pfp(self, user_id):
-        user = await self.fetch_user(user_id)
-        pfp_url = str(user.avatar)
-        return pfp_url
-
-    async def get_user_username(self, user_id):
-        user = await self.fetch_user(user_id)
-        username = f"{user.name}#{user.discriminator}"
-        return username
 
     async def on_ready(self):
         print(f"Logged in as {client.user}")
@@ -222,14 +248,25 @@ class MyClient(discord.Client):
             winner_id = message.author.id
             award = "Waking Up Early"
             await awardWin(award, "WU_scores", winner_id, message.channel, False)
-        if message.content.startswith(prefix):
-            user_info = [await self.get_user_username(message.author.id), await self.get_user_pfp(message.author.id),
-                         await self.get_user_pfp(895026694757445694)]
+        if message.content.startswith(prefix):  # commands
+            author_info = discord_user_data.get_user_info(message.author.id)
+            bot_user_info = discord_user_data.get_user_info(895026694757445694)
+            user_info = [author_info["username"],
+                         author_info["profile_picture"],
+                         bot_user_info["profile_picture"]]
             messageList = message.content.split()
             if len(messageList) == 1:
                 await sendLeaderboard("🌇 Waking Up Early Award Leaderboard 🌇", "WU_scores", message, user_info)
-            elif len(messageList) == 2 and messageList[1] == "s":
-                await sendStreakHolders(message, user_info)
+            elif len(messageList) == 2:
+                if messageList[1] == "s":
+                    await sendStreakHolders(message, user_info)
+                else:
+                    user = messageList[1]
+                    user_id = re.sub("[^0-9]", "", user)
+                    if len(str(user_id)) != 18:
+                        await message.channel.send(f"Invalid User ID: {user}")
+                        return
+                    await send_user_analysis(user_id, user_info, message)
             elif len(messageList) == 3:
                 moderator_ids = [603142766805123082, 299216822647914499]
                 if messageList[1] == "wu" or messageList[1] == "lm":

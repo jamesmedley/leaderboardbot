@@ -1,4 +1,4 @@
-# shell: python searching_scripts/performance_data.py
+# shell: python user_performance/count_wins.py
 
 import discord
 import pytz
@@ -14,7 +14,7 @@ client = discord.Client(intents=intents)
 
 @client.event
 async def on_ready():
-    print(f'Logged in as {client.user.name} ({client.user.id})')
+    print(f"Logged in as {client.user.name} ({client.user.id})")
     print(db["WU_scores"])
     # await find_waking_up_winners()
     # await find_last_message_winners()
@@ -24,12 +24,12 @@ async def on_ready():
 
 def get_uk_time(msg):
     utc_time = msg.created_at.replace(tzinfo=pytz.UTC)
-    uk_time = utc_time.astimezone(pytz.timezone('Europe/London'))
+    uk_time = utc_time.astimezone(pytz.timezone("Europe/London"))
     return uk_time
 
 
 async def find_last_message_winners():
-    print('Scanning messages...')
+    print("Scanning messages...")
     CHANNEL_ID = 525730239800672257
     STARTING_MESSAGE_ID = 695758099709034527
     channel = client.get_channel(CHANNEL_ID)
@@ -46,14 +46,14 @@ async def find_last_message_winners():
 
     print(data)
     data_json = json.dumps(data)
-    with open('searching_scripts/lm_wins.json', 'w') as file:
+    with open("user_performance/lm_wins.json", "w") as file:
         file.write(data_json)
 
     print(data)
 
 
 async def find_waking_up_winners():
-    print('Scanning messages...')
+    print("Scanning messages...")
     CHANNEL_ID = 525730239800672257
     STARTING_MESSAGE_ID = 748674557812015216
     channel = client.get_channel(CHANNEL_ID)
@@ -69,7 +69,7 @@ async def find_waking_up_winners():
         prev_message = msg
 
     data_json = json.dumps(data)
-    with open('searching_scripts/wu_wins.json', 'w') as file:
+    with open("user_performance/wu_wins.json", "w") as file:
         file.write(data_json)
 
     print(data)
@@ -83,10 +83,10 @@ def convert_dict(dictionary):
 
 
 def update_database_with_counted_wins():
-    with open("searching_scripts/wu_wins.json", 'r') as file:
+    with open("user_performance/wu_wins.json", "r") as file:
         wu = json.load(file)
 
-    with open("searching_scripts/lm_wins.json", 'r') as file:
+    with open("user_performance/lm_wins.json", "r") as file:
         lm = json.load(file)
 
     wu_json = convert_dict(wu)
@@ -99,7 +99,7 @@ def update_database_with_counted_wins():
 
 
 def analyse_data(file):
-    with open(file, 'r') as file:
+    with open(file, "r") as file:
         data = json.load(file)
         print(data)
     for key in data:
