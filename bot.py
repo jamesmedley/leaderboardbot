@@ -4,8 +4,9 @@ import re
 import requests
 import datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from threading import Thread
 from replit import db
+import asyncio
+
 
 prefix = "!lb"
 wua_waiting = False
@@ -64,7 +65,7 @@ def update_streak(lm, winner_id):
         return data["WU"][str(winner_id)]
 
 
-def update_scheduler(scheduler):
+def start_scheduler(scheduler):
     scheduler.start()
 
 
@@ -184,9 +185,10 @@ class MyClient(discord.Client):
         print(f"Logged in as {client.user}")
         await self.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="#g-e-n-e-r-a-l"))
         scheduler = AsyncIOScheduler(timezone="Europe/London")
-        scheduler.add_job(find_LM_winner, "cron", hour=0, minute=0, second=0)
-        thread = Thread(target=update_scheduler(scheduler))
-        thread.start()
+        scheduler.add_job(find_LM_winner, "cron", hour=1, minute=5, second=15)
+        loop = asyncio.get_running_loop()
+        loop.call_soon(start_scheduler, scheduler)
+        return
 
     async def on_message(self, message):
         global wua_waiting
