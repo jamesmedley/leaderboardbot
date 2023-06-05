@@ -44,6 +44,18 @@ def convert_observed_dict_to_dict(data):
     else:
         return data
 
+def convert_observed_list_to_list(data):
+    if isinstance(data, dict):
+        return {key: convert_observed_dict_to_dict(value) for key, value in data.items()}
+    elif hasattr(data, "value"):
+        if isinstance(data.value, list):
+            return [convert_observed_dict_to_dict(item) for item in data.value]
+        elif isinstance(data.value, tuple):
+            return tuple(convert_observed_dict_to_dict(item) for item in data.value)
+    else:
+        return data
+
+
 
 def update_streak(lm, winner_id):
     data = convert_observed_dict_to_dict(db["streak"])
@@ -70,11 +82,14 @@ def start_scheduler(scheduler):
 
 
 async def awardWin(award, db_key, winner_id, channel, lm):
-    data = dict(db[db_key])
+    data = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db[db_key])))
+    current_date = datetime.date.today()
+    formatted_date = current_date.strftime("%Y-%m-%d")
     if str(winner_id) not in data:
-        data[str(winner_id)] = 1
+        data[str(winner_id)] = ([formatted_date], 1)
     else:
-        data[str(winner_id)] += 1
+        data[str(winner_id)][0].append(formatted_date)
+        data[str(winner_id)][1] += 1
     db[db_key] = data
     streak = update_streak(lm, winner_id)
     winner = f"<@{winner_id}>"
@@ -90,12 +105,12 @@ async def find_LM_winner():
     message = await channel.fetch_message(message_id)
     await message.add_reaction("🏆")
     award = "Last Message Of The Day"
-    await awardWin(award, "LMscores", user_id, channel, True)
+    await awardWin(award, "LM_scores", user_id, channel, True)
 
 
 def leaderboard_embed(title, db_key, user_info):
-    data = dict(db[db_key])
-    leaders = sorted(data.items(), key=lambda x: x[1], reverse=True)
+    data = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db[db_key])))
+    leaders = sorted(data.items(), key=lambda x: x[1][1], reverse=True)
     eb = discord.Embed(title=f"**{title}**",
                        color=discord.Color.from_rgb(255, 88, 62),
                        url="https://en.wikipedia.org/wiki/Among_Us",
@@ -112,7 +127,7 @@ def leaderboard_embed(title, db_key, user_info):
             position = position + "th"
         eb.add_field(
             name=f"**{position}**",
-            value=f"<@{int(leaders[i][0])}> with **{leaders[i][1]}** wins", inline=False)
+            value=f"<@{int(leaders[i][0])}> with **{leaders[i][1][1]}** wins", inline=False)
     eb.set_footer(text=user_info[0], icon_url=user_info[1])
     eb.set_thumbnail(url=user_info[2])
     return eb
@@ -146,13 +161,13 @@ class MyClient(discord.Client):
                          await self.get_user_pfp(895026694757445694)]
             selected_option = interaction.data["values"][0]
             if selected_option == "1":
-                embed = leaderboard_embed("🌇 Waking Up Early Award Leaderboard 🌇", "WUscores", user_info)
+                embed = leaderboard_embed("🌇 Waking Up Early Award Leaderboard 🌇", "WU_scores", user_info)
                 placeholder = "🌇 Waking Up Early Award Leaderboard 🌇"
             elif selected_option == "2":
-                embed = leaderboard_embed("🌃 Last Message Of The Day Leaderboard 🌃", "LMscores", user_info)
+                embed = leaderboard_embed("🌃 Last Message Of The Day Leaderboard 🌃", "LM_scores", user_info)
                 placeholder = "🌃 Last Message Of The Day Leaderboard 🌃"
             else:
-                embed = leaderboard_embed("🌇 Waking Up Early Award Leaderboard 🌇", "WUscores", user_info)
+                embed = leaderboard_embed("🌇 Waking Up Early Award Leaderboard 🌇", "WU_scores", user_info)
                 placeholder = "🌇 Waking Up Early Award Leaderboard 🌇"
 
             select = discord.ui.Select(
@@ -185,7 +200,7 @@ class MyClient(discord.Client):
         print(f"Logged in as {client.user}")
         await self.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="#g-e-n-e-r-a-l"))
         scheduler = AsyncIOScheduler(timezone="Europe/London")
-        scheduler.add_job(find_LM_winner, "cron", hour=1, minute=5, second=15)
+        scheduler.add_job(find_LM_winner, "cron", hour=0, minute=0, second=0)
         loop = asyncio.get_running_loop()
         loop.call_soon(start_scheduler, scheduler)
         return
@@ -206,13 +221,13 @@ class MyClient(discord.Client):
             await message.add_reaction("🏆")
             winner_id = message.author.id
             award = "Waking Up Early"
-            await awardWin(award, "WUscores", winner_id, message.channel, False)
+            await awardWin(award, "WU_scores", winner_id, message.channel, False)
         if message.content.startswith(prefix):
             user_info = [await self.get_user_username(message.author.id), await self.get_user_pfp(message.author.id),
                          await self.get_user_pfp(895026694757445694)]
             messageList = message.content.split()
             if len(messageList) == 1:
-                await sendLeaderboard("🌇 Waking Up Early Award Leaderboard 🌇", "WUscores", message, user_info)
+                await sendLeaderboard("🌇 Waking Up Early Award Leaderboard 🌇", "WU_scores", message, user_info)
             elif len(messageList) == 2 and messageList[1] == "s":
                 await sendStreakHolders(message, user_info)
             elif len(messageList) == 3:
@@ -238,11 +253,11 @@ class MyClient(discord.Client):
                         return
                     if messageList[1] == "wu":
                         award = "Waking Up Early"
-                        db_key = "WUscores"
+                        db_key = "WU_scores"
                         lm = False
                     else:
                         award = "Last Message Of The Day"
-                        db_key = "LMscores"
+                        db_key = "LM_scores"
                         lm = True
                     await awardWin(award, db_key, winner_id, message.channel, lm)
 

@@ -15,6 +15,18 @@ def convert_observed_dict_to_dict(data):
         return data
 
 
+def convert_observed_list_to_list(data):
+    if isinstance(data, dict):
+        return {key: convert_observed_dict_to_dict(value) for key, value in data.items()}
+    elif hasattr(data, "value"):
+        if isinstance(data.value, list):
+            return [convert_observed_dict_to_dict(item) for item in data.value]
+        elif isinstance(data.value, tuple):
+            return tuple(convert_observed_dict_to_dict(item) for item in data.value)
+    else:
+        return data
+
+
 @lru_cache(maxsize=128)
 def get_user_info(user_id):
     headers = {
@@ -27,17 +39,18 @@ def get_user_info(user_id):
         discriminator = user_data["discriminator"]
         profile_picture = f"https://cdn.discordapp.com/avatars/{user_id}/{user_data['avatar']}.png"
         return {"username": username + "#" + discriminator, "profile_picture": profile_picture}
+    print("NONE", user_id, response.status_code)
     return None
 
 
 def sort_leaderboard(db_key):
-    last_message_scores = dict(db[db_key])
-    sorted_scores = sorted(last_message_scores.items(), key=lambda x: x[1], reverse=True)
+    last_message_scores = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db[db_key])))
+    sorted_scores = sorted(last_message_scores.items(), key=lambda x: x[1][1], reverse=True)
     users_info = []
     for user_id, score in sorted_scores:
         user_info = get_user_info(user_id)
         if user_info:
-            users_info.append((user_info["username"], user_info["profile_picture"], score))
+            users_info.append((user_info["username"], user_info["profile_picture"], score[1]))
     return users_info
 
 
@@ -56,14 +69,14 @@ def static_files(filename):
 
 @app.route("/wakingup")
 def wakingup():
-    users_info = sort_leaderboard("WUscores")
+    users_info = sort_leaderboard("WU_scores")
     return render_template("leaderboard.html", leaderboard=users_info, title="Waking Up Early Award",
                            tab_title="Waking Up Leaderboard")
 
 
 @app.route("/lastmessage")
 def lastmessage():
-    users_info = sort_leaderboard("LMscores")
+    users_info = sort_leaderboard("LM_scores")
     return render_template("leaderboard.html", leaderboard=users_info, title="Last Message Of The Day Award",
                            tab_title="Last Message Leaderboard")
 

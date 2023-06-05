@@ -1,7 +1,10 @@
+# shell: python searching_scripts/performance_data.py
+
 import discord
 import pytz
 import json
 import os
+from replit import db
 
 TOKEN = os.getenv("TOKEN")
 intents = discord.Intents.default()
@@ -12,9 +15,11 @@ client = discord.Client(intents=intents)
 @client.event
 async def on_ready():
     print(f'Logged in as {client.user.name} ({client.user.id})')
-    #await find_waking_up_winners()
-    #await find_last_message_winners()
-    analyse_data("wu_wins.json")
+    print(db["WU_scores"])
+    # await find_waking_up_winners()
+    # await find_last_message_winners()
+    # analyse_data("wu_wins.json")
+    # update_database_with_counted_wins()
 
 
 def get_uk_time(msg):
@@ -41,7 +46,7 @@ async def find_last_message_winners():
 
     print(data)
     data_json = json.dumps(data)
-    with open('lm_wins.json', 'w') as file:
+    with open('searching_scripts/lm_wins.json', 'w') as file:
         file.write(data_json)
 
     print(data)
@@ -64,10 +69,33 @@ async def find_waking_up_winners():
         prev_message = msg
 
     data_json = json.dumps(data)
-    with open('wu_wins.json', 'w') as file:
+    with open('searching_scripts/wu_wins.json', 'w') as file:
         file.write(data_json)
 
     print(data)
+
+
+def convert_dict(dictionary):
+    new_dict = {}
+    for key, value in dictionary.items():
+        new_dict[key] = (value, len(value))
+    return new_dict
+
+
+def update_database_with_counted_wins():
+    with open("searching_scripts/wu_wins.json", 'r') as file:
+        wu = json.load(file)
+
+    with open("searching_scripts/lm_wins.json", 'r') as file:
+        lm = json.load(file)
+
+    wu_json = convert_dict(wu)
+    lm_json = convert_dict(lm)
+
+    db["WU_scores"] = wu_json
+    db["LM_scores"] = lm_json
+
+    return
 
 
 def analyse_data(file):
