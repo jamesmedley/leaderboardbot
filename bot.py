@@ -180,7 +180,10 @@ async def send_user_analysis(user_id, user_info, message):
 
 
 def round_to_3sf(number):
-    rounded_number = round(number, -int(math.floor(math.log10(abs(number)))) + 2)
+    try:
+        rounded_number = round(number, -int(math.floor(math.log10(abs(number)))) + 2)
+    except ValueError:
+        rounded_number = 0
     formatted_number = '{:g}'.format(rounded_number)
     return formatted_number
 
@@ -220,7 +223,6 @@ class MyClient(discord.Client):
             view.add_item(select)
 
             await interaction.response.edit_message(embed=embed, view=view)
-
 
     async def on_ready(self):
         print(f"Logged in as {client.user}")

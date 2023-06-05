@@ -28,15 +28,21 @@ def find_user_win_rate_lm(user_id):  # total win rate
     lm_by_date = db["LM_by_date"]
     total_wins_count = len(lm_by_date.keys())
     win_data = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db["LM_scores"])))
-    user_win_count = win_data[str(user_id)][1]
-    return user_win_count/total_wins_count
+    try:
+        user_win_count = win_data[str(user_id)][1]
+    except KeyError:
+        user_win_count = 0
+    return user_win_count / total_wins_count
 
 
 def find_user_win_rate_wu(user_id):  # total win rate
     wu_by_date = db["WU_by_date"]
     total_wins_count = len(wu_by_date.keys())
     win_data = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db["WU_scores"])))
-    user_win_count = win_data[str(user_id)][1]
+    try:
+        user_win_count = win_data[str(user_id)][1]
+    except KeyError:
+        user_win_count = 0
     return user_win_count / total_wins_count
 
 
@@ -98,5 +104,3 @@ def generate_winner_by_date_datastructure():
         file.write(WU_by_date_json)
     with open("LM_by_date.json", "w") as file:
         file.write(LM_by_date_json)
-
-

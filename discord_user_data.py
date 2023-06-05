@@ -15,4 +15,4 @@ def get_user_info(user_id):
         discriminator = user_data["discriminator"]
         profile_picture = f"https://cdn.discordapp.com/avatars/{user_id}/{user_data['avatar']}.png"
         return {"username": username + "#" + discriminator, "profile_picture": profile_picture}
-    return None
+    return {"username": f"{response.status_code} error", "profile_picture": None}
