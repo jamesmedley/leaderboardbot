@@ -159,6 +159,8 @@ async def sendLeaderboard(title, db_key, message, user_info):
 
 
 async def send_user_analysis(user_id, user_info, message):
+    lm_wins = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db["LM_scores"])))
+    wu_wins = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db["WU_scores"])))
     lm_win_rate = performance_analysis.find_user_win_rate_lm(user_id)
     wu_win_rate = performance_analysis.find_user_win_rate_wu(user_id)
     username = discord_user_data.get_user_info(user_id)["username"]
@@ -166,17 +168,17 @@ async def send_user_analysis(user_id, user_info, message):
                        color=discord.Color.from_rgb(255, 88, 62),
                        url="https://en.wikipedia.org/wiki/Among_Us",
                        timestamp=datetime.datetime.utcnow())
-
     eb.add_field(
-        name=f"**Waking Up Early Award**",
+        name=f"Waking Up Early Award - {wu_wins[user_id][1]} wins",
         value=f"Current win rate: {round_to_3sf(wu_win_rate * 100)}%", inline=False)
     eb.add_field(
-        name=f"**Last Message Of The Day Award**",
+        name=f"Last Message Of The Day Award - {lm_wins[user_id][1]} wins",
         value=f"Current win rate: {round_to_3sf(lm_win_rate * 100)}%", inline=False)
-
+    file = performance_analysis.user_performance_graphs(user_id)
+    eb.set_image(url="attachment://graphs.png")
     eb.set_footer(text=user_info[0], icon_url=user_info[1])
     eb.set_thumbnail(url=user_info[2])
-    await message.channel.send(embed=eb)
+    await message.channel.send(file=file, embed=eb)
 
 
 def round_to_3sf(number):

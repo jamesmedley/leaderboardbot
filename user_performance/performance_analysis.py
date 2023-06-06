@@ -1,6 +1,10 @@
 import json
+import discord
 from datetime import datetime
 from replit import db
+import matplotlib.pyplot as plt
+import io
+from PIL import Image
 
 
 def convert_observed_dict_to_dict(data):
@@ -46,8 +50,66 @@ def find_user_win_rate_wu(user_id):  # total win rate
     return user_win_count / total_wins_count
 
 
-def user_win_rate_graph(id, db_key):  # win rate against time
-    return
+def user_win_rate_graph_lm(user_id):
+    lm_by_date = db["LM_by_date"]
+    total_count = 0
+    win_count = 0
+    y = []
+    x = []
+    for date in lm_by_date:
+        if lm_by_date[date] == user_id:
+            win_count += 1
+        total_count += 1
+        y.append((win_count / total_count) * 100)
+        x.append(datetime.strptime(date, "%Y-%m-%d"))
+    plt.clf()
+    plt.plot_date(x, y, "-")
+    plt.gcf().autofmt_xdate()
+    plt.xlabel("Date")
+    plt.ylabel("Win Rate (%)")
+    plt.title("Last Message Of The Day Performance")
+    image_stream = io.BytesIO()
+    plt.savefig(image_stream, format='png')
+    image_stream.seek(0)
+    return Image.open(image_stream)
+
+
+def user_win_rate_graph_wu(user_id):
+    wu_by_date = db["WU_by_date"]
+    total_count = 0
+    win_count = 0
+    y = []
+    x = []
+    for date in wu_by_date:
+        if wu_by_date[date] == user_id:
+            win_count += 1
+        total_count += 1
+        y.append((win_count / total_count) * 100)
+        x.append(datetime.strptime(date, "%Y-%m-%d"))
+    plt.clf()
+    plt.plot_date(x, y, "-")
+    plt.gcf().autofmt_xdate()
+    plt.xlabel("Date")
+    plt.ylabel("Win Rate (%)")
+    plt.title("Waking Up Early Award Performance")
+    image_stream = io.BytesIO()
+    plt.savefig(image_stream, format='png')
+    image_stream.seek(0)
+    return Image.open(image_stream)
+
+
+def user_performance_graphs(user_id):
+    image1 = user_win_rate_graph_wu(user_id)
+    image2 = user_win_rate_graph_lm(user_id)
+    height = max(image1.size[1], image2.size[1])
+    image1 = image1.resize((int(image1.size[0] * height / image1.size[1]), height))
+    image2 = image2.resize((int(image2.size[0] * height / image2.size[1]), height))
+    new_width = image1.size[0] + image2.size[0]
+    joined_image = Image.new('RGB', (new_width, height))
+    joined_image.paste(image1, (0, 0))
+    joined_image.paste(image2, (image1.size[0], 0))
+    joined_image.save("graphs.png")
+    return discord.File("graphs.png", filename="graphs.png")
 
 
 def all_users_win_rate_graph(db_key):  # win rate against time
