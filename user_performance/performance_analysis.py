@@ -2,9 +2,11 @@ import json
 import discord
 from datetime import datetime
 from replit import db
+import re
 import matplotlib.pyplot as plt
 import io
 from PIL import Image
+import discord_user_data
 
 
 def convert_observed_dict_to_dict(data):
@@ -50,48 +52,29 @@ def find_user_win_rate_wu(user_id):  # total win rate
     return user_win_count / total_wins_count
 
 
-def user_win_rate_graph_lm(user_id):
-    lm_by_date = db["LM_by_date"]
+def find_user_win_rate_over_time(user_id, db_key):
+    wins_by_date = db[db_key]
     total_count = 0
     win_count = 0
     y = []
     x = []
-    for date in lm_by_date:
-        if lm_by_date[date] == user_id:
+    for date in wins_by_date:
+        if wins_by_date[date] == user_id:
             win_count += 1
         total_count += 1
         y.append((win_count / total_count) * 100)
         x.append(datetime.strptime(date, "%Y-%m-%d"))
+    return x, y
+
+
+def user_win_rate_graph(user_id, title, db_key):
+    x, y = find_user_win_rate_over_time(user_id, db_key)
     plt.clf()
     plt.plot_date(x, y, "-")
     plt.gcf().autofmt_xdate()
     plt.xlabel("Date")
     plt.ylabel("Win Rate (%)")
-    plt.title("Last Message Of The Day Performance")
-    image_stream = io.BytesIO()
-    plt.savefig(image_stream, format='png')
-    image_stream.seek(0)
-    return Image.open(image_stream)
-
-
-def user_win_rate_graph_wu(user_id):
-    wu_by_date = db["WU_by_date"]
-    total_count = 0
-    win_count = 0
-    y = []
-    x = []
-    for date in wu_by_date:
-        if wu_by_date[date] == user_id:
-            win_count += 1
-        total_count += 1
-        y.append((win_count / total_count) * 100)
-        x.append(datetime.strptime(date, "%Y-%m-%d"))
-    plt.clf()
-    plt.plot_date(x, y, "-")
-    plt.gcf().autofmt_xdate()
-    plt.xlabel("Date")
-    plt.ylabel("Win Rate (%)")
-    plt.title("Waking Up Early Award Performance")
+    plt.title(title)
     image_stream = io.BytesIO()
     plt.savefig(image_stream, format='png')
     image_stream.seek(0)
@@ -99,8 +82,8 @@ def user_win_rate_graph_wu(user_id):
 
 
 def user_performance_graphs(user_id):
-    image1 = user_win_rate_graph_wu(user_id)
-    image2 = user_win_rate_graph_lm(user_id)
+    image1 = user_win_rate_graph(user_id, "Waking Up Early Award Performance", "WU_by_date")
+    image2 = user_win_rate_graph(user_id, "Last Message Of The Day Performance", "LM_by_date")
     height = max(image1.size[1], image2.size[1])
     image1 = image1.resize((int(image1.size[0] * height / image1.size[1]), height))
     image2 = image2.resize((int(image2.size[0] * height / image2.size[1]), height))
@@ -112,8 +95,25 @@ def user_performance_graphs(user_id):
     return discord.File("graphs.png", filename="graphs.png")
 
 
-def all_users_win_rate_graph(db_key):  # win rate against time
-    return
+def all_users_win_rate_graph(users_list, by_date_db_key, title):  # win rate against time
+    plots = {}
+    x = []
+    for user_id in users_list:
+        user_id = re.sub("[^0-9]", "", user_id)
+        x, y = find_user_win_rate_over_time(user_id, by_date_db_key)
+        plots[user_id] = y
+
+    fig, ax = plt.subplots(figsize=(10, 6))  # Adjust the figure size as needed
+    for user_id in plots:
+        ax.plot_date(x, plots[user_id], "-", label=discord_user_data.get_user_info(user_id)["username"])
+
+    ax.legend(loc='upper left')
+    plt.gcf().autofmt_xdate()
+    plt.xlabel("Date")
+    plt.ylabel("Win Rate (%)")
+    plt.title(title)
+    plt.savefig("graphs.png", bbox_inches='tight')  # Adjust the bbox_inches parameter
+    return discord.File("graphs.png", filename="graphs.png")
 
 
 def has_dates(dictionary):
@@ -128,6 +128,7 @@ def string_to_date(date_str):
 
 
 def generate_winner_by_date_datastructure():
+    return  # not needed currently
     with open("wu_wins.json", 'r') as file:
         wu_json = json.load(file)
 

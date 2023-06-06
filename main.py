@@ -3,7 +3,7 @@ import datetime
 import os
 from keep_alive import keep_alive
 
-restart_timer = 5
+restart_timer = 30
 
 
 def start_script():
