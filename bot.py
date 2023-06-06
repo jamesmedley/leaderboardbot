@@ -26,11 +26,11 @@ async def sendStreakHolders(message, user_info):
                        url="https://en.wikipedia.org/wiki/Among_Us",
                        timestamp=datetime.datetime.utcnow())
     eb.add_field(
-        name="**Waking Up Award**",
+        name="Waking Up Award",
         value=f"<@{int(wu_user)}> with **{wu_streak}**🔥",
         inline=False)
     eb.add_field(
-        name="**Last Message Of The Day**",
+        name="Last Message Of The Day",
         value=f"<@{int(lm_user)}> with **{lm_streak}**🔥",
         inline=False)
     eb.set_footer(text=user_info[0], icon_url=user_info[1])
@@ -132,7 +132,7 @@ def leaderboard_embed(title, db_key, user_info):
         else:
             position = position + "th"
         eb.add_field(
-            name=f"**{position}**",
+            name=f"{position}",
             value=f"<@{int(leaders[i][0])}> with **{leaders[i][1][1]}** wins", inline=False)
     eb.set_footer(text=user_info[0], icon_url=user_info[1])
     eb.set_thumbnail(url=user_info[2])
@@ -159,25 +159,33 @@ async def sendLeaderboard(title, db_key, message, user_info):
 
 
 async def send_user_analysis(user_id, user_info, message):
-    lm_wins = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db["LM_scores"])))
-    wu_wins = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db["WU_scores"])))
+    lm_wins_data = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db["LM_scores"])))
+    wu_wins_data = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db["WU_scores"])))
+    try:
+        lm_wins = lm_wins_data[user_id][1]
+    except KeyError:
+        lm_wins = 0
+    try:
+        wu_wins = wu_wins_data[user_id][1]
+    except KeyError:
+        wu_wins = 0
     lm_win_rate = performance_analysis.find_user_win_rate_lm(user_id)
     wu_win_rate = performance_analysis.find_user_win_rate_wu(user_id)
     username = discord_user_data.get_user_info(user_id)["username"]
-    eb = discord.Embed(title=f"**Performance Analysis For** {username}",
+    eb = discord.Embed(title=f"**Performance Analysis for** {username}",
                        color=discord.Color.from_rgb(255, 88, 62),
                        url="https://en.wikipedia.org/wiki/Among_Us",
                        timestamp=datetime.datetime.utcnow())
     eb.add_field(
-        name=f"Waking Up Early Award - {wu_wins[user_id][1]} wins",
+        name=f"Waking Up Early Award - {wu_wins} wins",
         value=f"Current win rate: {round_to_3sf(wu_win_rate * 100)}%", inline=False)
     eb.add_field(
-        name=f"Last Message Of The Day Award - {lm_wins[user_id][1]} wins",
+        name=f"Last Message Of The Day Award - {lm_wins} wins",
         value=f"Current win rate: {round_to_3sf(lm_win_rate * 100)}%", inline=False)
     file = performance_analysis.user_performance_graphs(user_id)
     eb.set_image(url="attachment://graphs.png")
     eb.set_footer(text=user_info[0], icon_url=user_info[1])
-    eb.set_thumbnail(url=user_info[2])
+    eb.set_thumbnail(url=discord_user_data.get_user_info(user_id)["profile_picture"])
     await message.channel.send(file=file, embed=eb)
 
 
