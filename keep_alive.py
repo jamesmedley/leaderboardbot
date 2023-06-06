@@ -79,6 +79,10 @@ def streaks():
     return render_template('streaks.html', lm=lm_data, wu=wu_data, title="Streaks")
 
 
+@app.route("/docs")
+def docs():
+    return render_template('docs.html')
+
 def run():
     app.run(host="0.0.0.0", port=8080)
 
