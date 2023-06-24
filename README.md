@@ -1,2 +1,2 @@
 # leaderboardbot
-For usage documentation visit: https://leaderboardbot.jmed13test.repl.co/docs
+For usage documentation visit: https://leaderboardbot.jamesmedley13.repl.co/docs

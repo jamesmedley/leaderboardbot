@@ -287,7 +287,7 @@ class MyClient(discord.Client):
                 if messageList[1] == "s":
                     await send_streak_holders(message, user_info)
                 elif messageList[1] == "help":
-                    doc_link = "https://leaderboardbot.jmed13.repl.co/docs"
+                    doc_link = "https://leaderboardbot.jamesmedley13.repl.co/docs"
                     await message.channel.send(f"Documentation: {doc_link}")
                 else:
                     user = messageList[1]
