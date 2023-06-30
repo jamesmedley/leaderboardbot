@@ -1,16 +1,16 @@
 import discord
+from discord import Intents, app_commands
 from discord.ext import tasks, commands
 import discord_user_data
 from user_performance import performance_analysis
 import os
-import re
 import requests
-from datetime import datetime, time
+from datetime import datetime, time, date
 import pytz
 from replit import db
 import math
 
-intents = discord.Intents.default()
+intents = Intents.default()
 intents.message_content = True
 prefix = "!lb"
 bot = commands.Bot(command_prefix=prefix, intents=intents)
@@ -18,8 +18,8 @@ wua_waiting = False
 last_message_ids = ()  # author, message
 
 
-async def send_streak_holders(message, user_info):
-    async with message.channel.typing():
+async def send_streak_holders(interaction, user_info):
+    async with interaction.channel.typing():
         data = convert_observed_dict_to_dict(db["streak"])
         lm_user = list(data["LM"].keys())[0]
         wu_user = list(data["WU"].keys())[0]
@@ -39,7 +39,7 @@ async def send_streak_holders(message, user_info):
             inline=False)
         eb.set_footer(text=user_info[0], icon_url=user_info[1])
         eb.set_thumbnail(url=user_info[2])
-        await message.channel.send(embed=eb)
+        await interaction.channel.send(embed=eb)
 
 
 def convert_observed_dict_to_dict(data):
@@ -83,9 +83,9 @@ def update_streak(lm, winner_id):
         return data["WU"][str(winner_id)]
 
 
-async def award_win(award, db_key, winner_id, channel, lm):
+async def award_win(award, db_key, winner_id, interaction, lm):
     data = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db[db_key])))
-    current_date = datetime.date.today()
+    current_date = date.today()
     formatted_date = current_date.strftime("%Y-%m-%d")
     if str(winner_id) not in data:
         data[str(winner_id)] = ([formatted_date], 1)
@@ -99,7 +99,7 @@ async def award_win(award, db_key, winner_id, channel, lm):
         db["WU_by_date"][formatted_date] = winner_id
     streak = update_streak(lm, winner_id)
     winner = f"<@{winner_id}>"
-    await channel.send(
+    await interaction.channel.send(
         f"{winner} has now won the {award} Award **{data[str(winner_id)][1]}** times.     **{streak}**🔥")
 
 
@@ -219,7 +219,11 @@ def round_to_3sf(number):
 
 @bot.event
 async def on_interaction(interaction):
-    if isinstance(interaction, discord.Interaction) and interaction.data["custom_id"] == "select_menu":
+    if isinstance(interaction, discord.Interaction):
+        try:
+            interaction.data["custom_id"] == "select_menu"
+        except KeyError:
+            return
         interaction_user_info = discord_user_data.get_user_info(interaction.user.id)
         bot_user_info = discord_user_data.get_user_info(895026694757445694)
         user_info = [interaction_user_info["username"],
@@ -256,8 +260,98 @@ async def on_interaction(interaction):
 async def on_ready():
     print(f'Logged in as {bot.user.name} ({bot.user.id})')
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="#g-e-n-e-r-a-l"))
-    find_LM_winner.start()
-    return
+
+
+@bot.tree.command(name='sync', description='Owner only')
+async def sync(interaction: discord.Interaction):
+    if interaction.user.id == 603142766805123082:
+        await bot.tree.sync()
+        await interaction.response.send_message('Command tree synced')
+    else:
+        await interaction.response.send_message('You must be the owner to use this command!')
+
+
+@bot.tree.command(name="leaderboard", description="Get leaderboard")
+async def cmd_lb(interaction: discord.Interaction):
+    author_info = discord_user_data.get_user_info(interaction.user.id)
+    bot_user_info = discord_user_data.get_user_info(895026694757445694)
+    user_info = [author_info["username"],
+                 author_info["profile_picture"],
+                 bot_user_info["profile_picture"]]
+    await interaction.response.send_message("Sending leaderboard...")
+    await send_leaderboard("🌇 Waking Up Early Award Leaderboard 🌇", "WU_scores", interaction, user_info)
+
+
+@bot.tree.command(name="streaks", description="Get current streak holders")
+async def cmd_streaks(interaction: discord.Interaction):
+    author_info = discord_user_data.get_user_info(interaction.user.id)
+    bot_user_info = discord_user_data.get_user_info(895026694757445694)
+    user_info = [author_info["username"],
+                 author_info["profile_picture"],
+                 bot_user_info["profile_picture"]]
+    await interaction.response.send_message("Sending streak information...")
+    await send_streak_holders(interaction, user_info)
+
+
+@bot.tree.command(name="userstats", description="Get user performance")
+async def cmd_user_stats(interaction: discord.Interaction, user: discord.Member):
+    author_info = discord_user_data.get_user_info(interaction.user.id)
+    bot_user_info = discord_user_data.get_user_info(895026694757445694)
+    user_info = [author_info["username"],
+                 author_info["profile_picture"],
+                 bot_user_info["profile_picture"]]
+    await interaction.response.send_message(f"Sending user statistics for {user.mention}...")
+    await send_user_analysis(str(user.id), user_info, interaction)
+
+
+@bot.tree.command(name="cmp", description="Compare performance between users")
+@app_commands.choices(award=[
+    app_commands.Choice(name="Waking Up Early Award", value="wu"),
+    app_commands.Choice(name="Last Message Of The Day", value="lm")
+])
+async def cmd_cmp(interaction: discord.Interaction, award: app_commands.Choice[str], users: discord.Member):
+    author_info = discord_user_data.get_user_info(interaction.user.id)
+    bot_user_info = discord_user_data.get_user_info(895026694757445694)
+    user_info = [author_info["username"],
+                 author_info["profile_picture"],
+                 bot_user_info["profile_picture"]]
+    await interaction.response.send_message("inactive command")
+    # if award.value == "wu":
+    #    return
+    # await send_stats(interaction.message, user_info, users_list, "WU_by_date", "Waking Up Early Award Comparison")
+    # else:
+    #   return
+    # await send_stats(interaction.message, user_info, users_list, "LM_by_date", "Last Message Of The Day Comparison")
+
+
+@bot.tree.command(name="award", description="Award a win to a user")
+@app_commands.choices(award=[
+    app_commands.Choice(name="Waking Up Early Award", value="wu"),
+    app_commands.Choice(name="Last Message Of The Day", value="lm")
+])
+async def cmd_award(interaction: discord.Interaction, award: app_commands.Choice[str], user: discord.Member):
+    moderator_ids = [603142766805123082, 299216822647914499]
+    if interaction.user.id not in moderator_ids:
+        api_key = os.getenv("GIPHY")
+        response = requests.get(f"https://api.giphy.com/v1/gifs/random?api_key={api_key}&tag=clown")
+        if response.status_code == 200:
+            data = response.json()
+            if "data" in data and "url" in data["data"]:
+                gif_url = data["data"]["url"]
+                await interaction.response.send_message(gif_url)
+            else:
+                await interaction.response.send_message("dont be naughty!")
+        else:
+            await interaction.response.send_message("dont be naughty!")
+        return
+    if award.value == "wu":
+        db_key = "WU_scores"
+        lm = False
+    else:
+        db_key = "LM_scores"
+        lm = True
+    await interaction.response.send_message(f"Awarding {award.name} win to {user.mention}...")
+    await award_win(award.name, db_key, user.id, interaction, lm)
 
 
 @bot.event
@@ -278,68 +372,6 @@ async def on_message(message):
         winner_id = message.author.id
         award = "Waking Up Early"
         await award_win(award, "WU_scores", winner_id, message.channel, False)
-    if message.content.startswith(prefix):  # commands
-        author_info = discord_user_data.get_user_info(message.author.id)
-        bot_user_info = discord_user_data.get_user_info(895026694757445694)
-        user_info = [author_info["username"],
-                     author_info["profile_picture"],
-                     bot_user_info["profile_picture"]]
-        messageList = message.content.split()
-        if len(messageList) == 1:
-            await send_leaderboard("🌇 Waking Up Early Award Leaderboard 🌇", "WU_scores", message, user_info)
-        elif len(messageList) == 2:
-            if messageList[1] == "s":
-                await send_streak_holders(message, user_info)
-            elif messageList[1] == "help":
-                doc_link = "https://leaderboardbot.jamesmedley13.repl.co/docs"
-                await message.channel.send(f"Documentation: {doc_link}")
-            else:
-                user = messageList[1]
-                user_id = re.sub("[^0-9]", "", user)
-                if len(str(user_id)) != 18:
-                    await message.channel.send(f"Invalid User ID: {user}")
-                    return
-                await send_user_analysis(user_id, user_info, message)
-        elif len(messageList) >= 3:
-            moderator_ids = [603142766805123082, 299216822647914499]
-            if messageList[1] == "wu" or messageList[1] == "lm":
-                if message.author.id not in moderator_ids:
-                    api_key = os.getenv("GIPHY")
-                    response = requests.get(f"https://api.giphy.com/v1/gifs/random?api_key={api_key}&tag=clown")
-                    if response.status_code == 200:
-                        data = response.json()
-                        if "data" in data and "url" in data["data"]:
-                            gif_url = data["data"]["url"]
-                            await message.channel.send(gif_url)
-                        else:
-                            await message.channel.send("dont be naughty!")
-                    else:
-                        await message.channel.send("dont be naughty!")
-                    return
-                winner = messageList[2]
-                winner_id = re.sub("[^0-9]", "", winner)
-                if len(str(winner_id)) != 18:
-                    await message.channel.send(f"Invalid User ID: {winner}")
-                    return
-                if messageList[1] == "wu":
-                    award = "Waking Up Early"
-                    db_key = "WU_scores"
-                    lm = False
-                else:
-                    award = "Last Message Of The Day"
-                    db_key = "LM_scores"
-                    lm = True
-                await award_win(award, db_key, winner_id, message.channel, lm)
 
-            if messageList[1] == "cmp":
-                users_list = messageList[3:]
-                if messageList[2] == "wu":
-                    await send_stats(message, user_info, users_list, "WU_by_date",
-                                     "Waking Up Early Award Comparison")
-                elif messageList[2] == "lm":
-                    await send_stats(message, user_info, users_list, "LM_by_date",
-                                     "Last Message Of The Day Comparison")
-                else:
-                    await message.channel.send("specify wu/lm.")
 
 bot.run(os.getenv("TOKEN"))
