@@ -39,7 +39,7 @@ async def send_streak_holders(interaction, user_info):
             inline=False)
         eb.set_footer(text=user_info[0], icon_url=user_info[1])
         eb.set_thumbnail(url=user_info[2])
-        await interaction.channel.send(embed=eb)
+        return eb
 
 
 def convert_observed_dict_to_dict(data):
@@ -98,8 +98,9 @@ async def award_win(award, db_key, winner_id, interaction, lm):
     else:
         db["WU_by_date"][formatted_date] = winner_id
     streak = update_streak(lm, winner_id)
+    streak=0
     winner = f"<@{winner_id}>"
-    await interaction.channel.send(
+    await interaction.response.send_message(
         f"{winner} has now won the {award} Award **{data[str(winner_id)][1]}** times.     **{streak}**🔥")
 
 
@@ -160,7 +161,7 @@ async def send_leaderboard(title, db_key, message, user_info):
 
         view = discord.ui.View()
         view.add_item(select)
-        await message.channel.send(embed=eb, view=view)
+        return eb, view
 
 
 async def send_stats(message, user_info, users_list, db_key, graph_title):
@@ -205,7 +206,7 @@ async def send_user_analysis(user_id, user_info, message):
         eb.set_image(url="attachment://graphs.png")
         eb.set_footer(text=user_info[0], icon_url=user_info[1])
         eb.set_thumbnail(url=discord_user_data.get_user_info(user_id)["profile_picture"])
-        await message.channel.send(file=file, embed=eb)
+        return file, eb
 
 
 def round_to_3sf(number):
@@ -262,7 +263,7 @@ async def on_ready():
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="#g-e-n-e-r-a-l"))
 
 
-@bot.tree.command(name='sync', description='Owner only')
+@bot.tree.command(name='sync', description='Owner only', guild=discord.Object(id=878982626306826271))
 async def sync(interaction: discord.Interaction):
     if interaction.user.id == 603142766805123082:
         await bot.tree.sync()
@@ -278,8 +279,8 @@ async def cmd_lb(interaction: discord.Interaction):
     user_info = [author_info["username"],
                  author_info["profile_picture"],
                  bot_user_info["profile_picture"]]
-    await interaction.response.send_message("Sending leaderboard...")
-    await send_leaderboard("🌇 Waking Up Early Award Leaderboard 🌇", "WU_scores", interaction, user_info)
+    embed, view = await send_leaderboard("🌇 Waking Up Early Award Leaderboard 🌇", "WU_scores", interaction, user_info)
+    await interaction.response.send_message(embed=embed, view=view)
 
 
 @bot.tree.command(name="streaks", description="Get current streak holders")
@@ -289,8 +290,8 @@ async def cmd_streaks(interaction: discord.Interaction):
     user_info = [author_info["username"],
                  author_info["profile_picture"],
                  bot_user_info["profile_picture"]]
-    await interaction.response.send_message("Sending streak information...")
-    await send_streak_holders(interaction, user_info)
+    embed = await send_streak_holders(interaction, user_info)
+    await interaction.response.send_message(embed=embed)
 
 
 @bot.tree.command(name="userstats", description="Get user performance")
@@ -300,8 +301,8 @@ async def cmd_user_stats(interaction: discord.Interaction, user: discord.Member)
     user_info = [author_info["username"],
                  author_info["profile_picture"],
                  bot_user_info["profile_picture"]]
-    await interaction.response.send_message(f"Sending user statistics for {user.mention}...")
-    await send_user_analysis(str(user.id), user_info, interaction)
+    file, embed = await send_user_analysis(str(user.id), user_info, interaction)
+    await interaction.response.send_message(file=file, embed=embed)
 
 
 @bot.tree.command(name="cmp", description="Compare performance between users")
@@ -350,7 +351,6 @@ async def cmd_award(interaction: discord.Interaction, award: app_commands.Choice
     else:
         db_key = "LM_scores"
         lm = True
-    await interaction.response.send_message(f"Awarding {award.name} win to {user.mention}...")
     await award_win(award.name, db_key, user.id, interaction, lm)
 
 
