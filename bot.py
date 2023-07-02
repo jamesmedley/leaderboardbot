@@ -83,7 +83,7 @@ def update_streak(lm, winner_id):
         return data["WU"][str(winner_id)]
 
 
-async def award_win(award, db_key, winner_id, interaction, lm):
+async def award_win(award, db_key, winner_id, channel, lm, interaction):
     data = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db[db_key])))
     current_date = date.today()
     formatted_date = current_date.strftime("%Y-%m-%d")
@@ -98,10 +98,13 @@ async def award_win(award, db_key, winner_id, interaction, lm):
     else:
         db["WU_by_date"][formatted_date] = winner_id
     streak = update_streak(lm, winner_id)
-    streak=0
+    streak = 0
     winner = f"<@{winner_id}>"
-    await interaction.response.send_message(
-        f"{winner} has now won the {award} Award **{data[str(winner_id)][1]}** times.     **{streak}**🔥")
+    message = f"{winner} has now won the {award} Award **{data[str(winner_id)][1]}** times.     **{streak}**🔥"
+    if channel is None:
+        interaction.response.send_message(message)
+    else:
+        await channel.send(message)
 
 
 @tasks.loop(seconds=1)
@@ -117,7 +120,7 @@ async def find_LM_winner():
         message = await channel.fetch_message(message_id)
         await message.add_reaction("🏆")
         award = "Last Message Of The Day"
-        await award_win(award, "LM_scores", user_id, channel, True)
+        await award_win(award, "LM_scores", user_id, channel, True, None)
 
 
 def leaderboard_embed(title, db_key, user_info):
@@ -351,7 +354,7 @@ async def cmd_award(interaction: discord.Interaction, award: app_commands.Choice
     else:
         db_key = "LM_scores"
         lm = True
-    await award_win(award.name, db_key, user.id, interaction, lm)
+    await award_win(award.name, db_key, user.id, None, lm, interaction)
 
 
 @bot.event
@@ -371,7 +374,7 @@ async def on_message(message):
         await message.add_reaction("🏆")
         winner_id = message.author.id
         award = "Waking Up Early"
-        await award_win(award, "WU_scores", winner_id, message.channel, False)
+        await award_win(award, "WU_scores", winner_id, message.channel, False, None)
 
 
 bot.run(os.getenv("TOKEN"))
