@@ -98,7 +98,6 @@ async def award_win(award, db_key, winner_id, channel, lm, interaction):
     else:
         db["WU_by_date"][formatted_date] = winner_id
     streak = update_streak(lm, winner_id)
-    streak = 0
     winner = f"<@{winner_id}>"
     message = f"{winner} has now won the {award} Award **{data[str(winner_id)][1]}** times.     **{streak}**🔥"
     if channel is None:
