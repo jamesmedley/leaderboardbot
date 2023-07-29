@@ -3,6 +3,7 @@ from discord import Intents, app_commands
 from discord.ext import tasks, commands
 import discord_user_data
 from user_performance import performance_analysis
+from keep_alive import keep_alive
 import os
 import requests
 from datetime import datetime, time, date
@@ -101,7 +102,7 @@ async def award_win(award, db_key, winner_id, channel, lm, interaction):
     winner = f"<@{winner_id}>"
     message = f"{winner} has now won the {award} Award **{data[str(winner_id)][1]}** times.     **{streak}**🔥"
     if channel is None:
-        interaction.response.send_message(message)
+        await interaction.response.send_message(message)
     else:
         await channel.send(message)
 
@@ -263,6 +264,7 @@ async def on_interaction(interaction):
 async def on_ready():
     print(f'Logged in as {bot.user.name} ({bot.user.id})')
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="#g-e-n-e-r-a-l"))
+    find_LM_winner.start()
 
 
 @bot.tree.command(name='sync', description='Owner only', guild=discord.Object(id=878982626306826271))
@@ -376,4 +378,5 @@ async def on_message(message):
         await award_win(award, "WU_scores", winner_id, message.channel, False, None)
 
 
+keep_alive()
 bot.run(os.getenv("TOKEN"))
