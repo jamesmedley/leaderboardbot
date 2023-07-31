@@ -64,7 +64,6 @@ def find_user_win_rate_over_time(user_id, db_key):
         total_count += 1
         y.append((win_count / total_count) * 100)
         x.append(datetime.strptime(date, "%Y-%m-%d"))
-    print(win_count, total_count)
     return x, y
 
 
