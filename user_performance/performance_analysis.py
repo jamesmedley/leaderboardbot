@@ -59,11 +59,12 @@ def find_user_win_rate_over_time(user_id, db_key):
     y = []
     x = []
     for date in wins_by_date:
-        if wins_by_date[date] == user_id:
+        if str(wins_by_date[date]) == user_id:
             win_count += 1
         total_count += 1
         y.append((win_count / total_count) * 100)
         x.append(datetime.strptime(date, "%Y-%m-%d"))
+    print(win_count, total_count)
     return x, y
 
 
@@ -103,7 +104,7 @@ def all_users_win_rate_graph(users_list, by_date_db_key, title):  # win rate aga
         x, y = find_user_win_rate_over_time(user_id, by_date_db_key)
         plots[user_id] = y
 
-    fig, ax = plt.subplots(figsize=(10, 6))  # Adjust the figure size as needed
+    fig, ax = plt.subplots(figsize=(10, 6))
     for user_id in plots:
         ax.plot_date(x, plots[user_id], "-", label=discord_user_data.get_user_info(user_id)["username"])
 
@@ -112,7 +113,7 @@ def all_users_win_rate_graph(users_list, by_date_db_key, title):  # win rate aga
     plt.xlabel("Date")
     plt.ylabel("Win Rate (%)")
     plt.title(title)
-    plt.savefig("graphs.png", bbox_inches='tight')  # Adjust the bbox_inches parameter
+    plt.savefig("graphs.png", bbox_inches='tight')
     return discord.File("graphs.png", filename="graphs.png")
 
 

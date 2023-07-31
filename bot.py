@@ -194,8 +194,7 @@ async def send_user_analysis(user_id, user_info, message):
             wu_wins = 0
         lm_win_rate = performance_analysis.find_user_win_rate_lm(user_id)
         wu_win_rate = performance_analysis.find_user_win_rate_wu(user_id)
-        username = discord_user_data.get_user_info(user_id)["username"]
-        eb = discord.Embed(title=f"**Performance Analysis for {username}**",
+        eb = discord.Embed(title=f"**Performance Analysis for {user_info[0]}**",
                            color=discord.Color.from_rgb(255, 88, 62),
                            url="https://en.wikipedia.org/wiki/Among_Us",
                            timestamp=datetime.utcnow())
@@ -208,7 +207,7 @@ async def send_user_analysis(user_id, user_info, message):
         file = performance_analysis.user_performance_graphs(user_id)
         eb.set_image(url="attachment://graphs.png")
         eb.set_footer(text=user_info[0], icon_url=user_info[1])
-        eb.set_thumbnail(url=discord_user_data.get_user_info(user_id)["profile_picture"])
+        eb.set_thumbnail(url=user_info[1])
         return file, eb
 
 

@@ -83,6 +83,7 @@ def streaks():
 def docs():
     return render_template('docs.html')
 
+
 def run():
     app.run(host="0.0.0.0", port=8080)
 
