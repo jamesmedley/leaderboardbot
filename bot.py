@@ -6,7 +6,7 @@ from user_performance import performance_analysis
 from keep_alive import keep_alive
 import os
 import requests
-from datetime import datetime, time, date
+from datetime import datetime, time, date, timedelta
 import pytz
 from replit import db
 import math
@@ -84,7 +84,7 @@ def update_streak(lm, winner_id):
         return data["WU"][str(winner_id)]
 
 
-async def award_win(award, db_key, winner_id, channel, lm, interaction):
+async def award_win(award, db_key, winner_id, channel, lm, time_str, interaction):
     data = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db[db_key])))
     current_date = date.today()
     formatted_date = current_date.strftime("%Y-%m-%d")
@@ -100,7 +100,10 @@ async def award_win(award, db_key, winner_id, channel, lm, interaction):
         db["WU_by_date"][formatted_date] = winner_id
     streak = update_streak(lm, winner_id)
     winner = f"<@{winner_id}>"
-    message = f"{winner} has now won the {award} Award **{data[str(winner_id)][1]}** times.     **{streak}**🔥"
+    if lm and time_str is not None:
+        message = f"{winner} has now won the {award} Award **{data[str(winner_id)][1]}** times - {time_str}     **{streak}**🔥"
+    else:
+        message = f"{winner} has now won the {award} Award **{data[str(winner_id)][1]}** times.     **{streak}**🔥"
     if channel is None:
         await interaction.response.send_message(message)
     else:
@@ -113,14 +116,35 @@ async def find_LM_winner():
     current_time = datetime.now(uk_timezone).time()
     target_time = time(hour=0, minute=0, second=0)
     if current_time.hour == target_time.hour and current_time.minute == target_time.minute and current_time.second == target_time.second:
-        global last_message_ids
-        message_id = last_message_ids[1]
-        user_id = last_message_ids[0]
         channel = bot.get_channel(525730239800672257)  # g e n e r a l 525730239800672257
+        target_date = datetime.now(uk_timezone).date() - timedelta(days=1)
+        async for message in channel.history(limit=None):
+            message_created_at = message.created_at
+            if ((message_created_at.astimezone(uk_timezone)).date()) == target_date:
+                message_id = message.id
+                user_id = message.author.id
+                message_created_at = message.created_at
+                message_created_at_uk = message_created_at.astimezone(uk_timezone)
+                current_datetime_uk = datetime.now(uk_timezone)
+                time_diff = current_datetime_uk.replace(hour=0, minute=0, second=0,
+                                                        microsecond=0) - message_created_at_uk
+                total_seconds = time_diff.total_seconds()
+                if total_seconds < 60:
+                    time_diff_str = f"{total_seconds} seconds"
+                elif total_seconds < 3600:
+                    minutes = int(total_seconds // 60)
+                    seconds = int(total_seconds % 60)
+                    time_diff_str = f"{minutes} minutes and {seconds} seconds"
+                else:
+                    hours = int(total_seconds // 3600)
+                    minutes = int((total_seconds % 3600) // 60)
+                    time_diff_str = f"{hours} hours and {minutes} minutes"
+                break
+        time_str = f'with **{time_diff_str}** left to spare!'
         message = await channel.fetch_message(message_id)
         await message.add_reaction("🏆")
         award = "Last Message Of The Day"
-        await award_win(award, "LM_scores", user_id, channel, True, None)
+        await award_win(award, "LM_scores", user_id, channel, True, time_str, None)
 
 
 def leaderboard_embed(title, db_key, user_info):
@@ -180,7 +204,7 @@ async def send_stats(message, user_info, users_list, db_key, graph_title):
         await message.channel.send(file=file, embed=eb)
 
 
-async def send_user_analysis(user_id, user_info, message):
+async def send_user_analysis(user_id, user_info):
     lm_wins_data = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db["LM_scores"])))
     wu_wins_data = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db["WU_scores"])))
     try:
@@ -354,7 +378,7 @@ async def cmd_award(interaction: discord.Interaction, award: app_commands.Choice
     else:
         db_key = "LM_scores"
         lm = True
-    await award_win(award.name, db_key, user.id, None, lm, interaction)
+    await award_win(award.name, db_key, user.id, None, lm, None, interaction)
 
 
 @bot.event
@@ -374,7 +398,7 @@ async def on_message(message):
         await message.add_reaction("🏆")
         winner_id = message.author.id
         award = "Waking Up Early"
-        await award_win(award, "WU_scores", winner_id, message.channel, False, None)
+        await award_win(award, "WU_scores", winner_id, message.channel, False, None, None)
 
 
 keep_alive()
