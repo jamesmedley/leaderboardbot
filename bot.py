@@ -204,7 +204,7 @@ async def send_stats(message, user_info, users_list, db_key, graph_title):
         await message.channel.send(file=file, embed=eb)
 
 
-async def send_user_analysis(user_id, user_info):
+async def send_user_analysis(user_id, user_info, message):
     lm_wins_data = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db["LM_scores"])))
     wu_wins_data = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db["WU_scores"])))
     try:
@@ -378,7 +378,8 @@ async def cmd_award(interaction: discord.Interaction, award: app_commands.Choice
     else:
         db_key = "LM_scores"
         lm = True
-    await award_win(award.name, db_key, user.id, None, lm, None, interaction)
+    award_str = award.name.replace(" Award", "")
+    await award_win(award_str, db_key, user.id, None, lm, None, interaction)
 
 
 @bot.event
