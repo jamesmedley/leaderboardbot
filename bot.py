@@ -15,8 +15,6 @@ intents = Intents.default()
 intents.message_content = True
 prefix = "!lb"
 bot = commands.Bot(command_prefix=prefix, intents=intents)
-wua_waiting = False
-last_message_ids = ()  # author, message
 
 
 async def send_streak_holders(interaction, user_info):
@@ -234,6 +232,12 @@ async def send_user_analysis(user_id, user_info, message):
     return file, eb
 
 
+async def is_first_message():
+    channel = bot.get_channel(525730239800672257)
+    messages = [message async for message in channel.history(limit=2)]
+    return messages[1].author.id == 748488791471161405
+
+
 def round_to_3sf(number):
     try:
         rounded_number = round(number, -int(math.floor(math.log10(abs(number)))) + 2)
@@ -337,7 +341,8 @@ async def cmd_user_stats(interaction: discord.Interaction, user: discord.Member)
     app_commands.Choice(name="Waking Up Early Award", value="wu"),
     app_commands.Choice(name="Last Message Of The Day", value="lm")
 ])
-async def cmd_cmp(interaction: discord.Interaction, award: app_commands.Choice[str], users: discord.Member):
+async def cmd_cmp(interaction: discord.Interaction, award: app_commands.Choice[str], user1: discord.Member,
+                  user2: discord.Member):
     author_info = discord_user_data.get_user_info(interaction.user.id)
     bot_user_info = discord_user_data.get_user_info(895026694757445694)
     user_info = [author_info["username"],
@@ -348,7 +353,7 @@ async def cmd_cmp(interaction: discord.Interaction, award: app_commands.Choice[s
     #    return
     # await send_stats(interaction.message, user_info, users_list, "WU_by_date", "Waking Up Early Award Comparison")
     # else:
-    #   return
+    #  return
     # await send_stats(interaction.message, user_info, users_list, "LM_by_date", "Last Message Of The Day Comparison")
 
 
@@ -384,18 +389,11 @@ async def cmd_award(interaction: discord.Interaction, award: app_commands.Choice
 
 @bot.event
 async def on_message(message):
-    global wua_waiting
-    global last_message_ids
-    if message.channel.id == 525730239800672257:  # 525730239800672257:
-        last_message_ids = (message.author.id, message.id)
     if message.author.id == 696828737248952331:
         await message.add_reaction("❤️")
     if message.author.id == bot.user.id:
         return
-    if not wua_waiting and message.author.id == 748488791471161405:  # WU bot id: 748488791471161405
-        wua_waiting = True
-    if wua_waiting and message.author.id != 748488791471161405 and message.channel.id == 525730239800672257:
-        wua_waiting = False
+    if await is_first_message():
         await message.add_reaction("🏆")
         winner_id = message.author.id
         award = "Waking Up Early"
