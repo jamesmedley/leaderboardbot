@@ -70,8 +70,8 @@ def find_user_win_rate_over_time(user_id, db_key):
 def user_win_rate_graph(user_id, title, db_key):
     x, y = find_user_win_rate_over_time(user_id, db_key)
     plt.clf()
-    plt.figure(facecolor=(43/255, 45/255, 49/255))
-    plt.plot_date(x, y, "-", color=(255/255, 88/255, 62/255), linewidth=2)
+    plt.figure(facecolor=(43 / 255, 45 / 255, 49 / 255))
+    plt.plot_date(x, y, "-", color=(255 / 255, 88 / 255, 62 / 255), linewidth=2)
     plt.grid(True)
     plt.gcf().autofmt_xdate()
     plt.xlabel("Date", fontsize=14, fontweight="bold", color=(1, 1, 1))
@@ -102,20 +102,25 @@ def user_performance_graphs(user_id):
 def all_users_win_rate_graph(users_list, by_date_db_key, title):  # win rate against time
     plots = {}
     x = []
-    for user_id in users_list:
+    for user in users_list:
+        user_id = str(user.id)
         user_id = re.sub("[^0-9]", "", user_id)
         x, y = find_user_win_rate_over_time(user_id, by_date_db_key)
         plots[user_id] = y
 
     fig, ax = plt.subplots(figsize=(10, 6))
+    fig.set_facecolor((43 / 255, 45 / 255, 49 / 255))
     for user_id in plots:
-        ax.plot_date(x, plots[user_id], "-", label=discord_user_data.get_user_info(user_id)["username"])
+        ax.plot_date(x, plots[user_id], "-", label=discord_user_data.get_user_info(user_id)["username"], linewidth=2)
 
     ax.legend(loc='upper left')
     plt.gcf().autofmt_xdate()
-    plt.xlabel("Date")
-    plt.ylabel("Win Rate (%)")
-    plt.title(title)
+    plt.grid(True)
+    plt.xlabel("Date", fontsize=14, fontweight="bold", color=(1, 1, 1))
+    plt.ylabel("Win Rate (%)", fontsize=14, fontweight="bold", color=(1, 1, 1))
+    plt.xticks(fontsize=12, fontweight="bold", color=(1, 1, 1))
+    plt.yticks(fontsize=12, fontweight="bold", color=(1, 1, 1))
+    plt.title(title, fontsize=16, fontweight="bold", color=(1, 1, 1))
     plt.savefig("graphs.png", bbox_inches='tight')
     return discord.File("graphs.png", filename="graphs.png")
 

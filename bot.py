@@ -10,6 +10,8 @@ from datetime import datetime, time, date, timedelta
 import pytz
 from replit import db
 import math
+from PIL import Image
+from io import BytesIO
 
 intents = Intents.default()
 intents.message_content = True
@@ -24,21 +26,21 @@ async def send_streak_holders(interaction, user_info):
         wu_user = list(data["WU"].keys())[0]
         lm_streak = data["LM"][str(lm_user)]
         wu_streak = data["WU"][str(wu_user)]
-        eb = discord.Embed(title="**Current Streak Holders**",
-                           color=discord.Color.from_rgb(255, 88, 62),
-                           url="https://en.wikipedia.org/wiki/Among_Us",
-                           timestamp=datetime.utcnow())
-        eb.add_field(
+        embed = discord.Embed(title="**Current Streak Holders**",
+                              color=discord.Color.from_rgb(255, 88, 62),
+                              url="https://en.wikipedia.org/wiki/Among_Us",
+                              timestamp=datetime.utcnow())
+        embed.add_field(
             name="Waking Up Award",
             value=f"<@{int(wu_user)}> with **{wu_streak}**🔥",
             inline=False)
-        eb.add_field(
+        embed.add_field(
             name="Last Message Of The Day",
             value=f"<@{int(lm_user)}> with **{lm_streak}**🔥",
             inline=False)
-        eb.set_footer(text=user_info[0], icon_url=user_info[1])
-        eb.set_thumbnail(url=user_info[2])
-        return eb
+        embed.set_footer(text=user_info[0], icon_url=user_info[1])
+        embed.set_thumbnail(url=user_info[2])
+        return embed
 
 
 def convert_observed_dict_to_dict(data):
@@ -82,10 +84,11 @@ def update_streak(lm, winner_id):
         return data["WU"][str(winner_id)]
 
 
-async def award_win(award, db_key, winner_id, channel, lm, time_str, interaction):
+async def award_win(award, db_key, author, channel, lm, time_str, interaction):
     data = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db[db_key])))
     current_date = date.today()
     formatted_date = current_date.strftime("%Y-%m-%d")
+    winner_id = author.id
     if str(winner_id) not in data:
         data[str(winner_id)] = ([formatted_date], 1)
     else:
@@ -97,11 +100,10 @@ async def award_win(award, db_key, winner_id, channel, lm, time_str, interaction
     else:
         db["WU_by_date"][formatted_date] = winner_id
     streak = update_streak(lm, winner_id)
-    winner = f"<@{winner_id}>"
     if lm and time_str is not None:
-        message = f"{winner} has now won the {award} Award **{data[str(winner_id)][1]}** times - {time_str}     **{streak}**🔥"
+        message = f"{author.mention} has now won the {award} Award **{data[str(winner_id)][1]}** times - {time_str}     **{streak}**🔥"
     else:
-        message = f"{winner} has now won the {award} Award **{data[str(winner_id)][1]}** times.     **{streak}**🔥"
+        message = f"{author.mention} has now won the {award} Award **{data[str(winner_id)][1]}** times.     **{streak}**🔥"
     if channel is None:
         await interaction.response.send_message(message)
     else:
@@ -120,7 +122,7 @@ async def find_LM_winner():
             message_created_at = message.created_at
             if ((message_created_at.astimezone(uk_timezone)).date()) == target_date:
                 message_id = message.id
-                user_id = message.author.id
+                author = message.author
                 message_created_at = message.created_at
                 message_created_at_uk = message_created_at.astimezone(uk_timezone)
                 current_datetime_uk = datetime.now(uk_timezone)
@@ -142,16 +144,16 @@ async def find_LM_winner():
         message = await channel.fetch_message(message_id)
         await message.add_reaction("🏆")
         award = "Last Message Of The Day"
-        await award_win(award, "LM_scores", user_id, channel, True, time_str, None)
+        await award_win(award, "LM_scores", author, channel, True, time_str, None)
 
 
 def leaderboard_embed(title, db_key, user_info):
     data = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db[db_key])))
     leaders = sorted(data.items(), key=lambda x: x[1][1], reverse=True)
-    eb = discord.Embed(title=f"**{title}**",
-                       color=discord.Color.from_rgb(255, 88, 62),
-                       url="https://en.wikipedia.org/wiki/Among_Us",
-                       timestamp=datetime.utcnow())
+    embed = discord.Embed(title=f"**{title}**",
+                          color=discord.Color.from_rgb(255, 88, 62),
+                          url="https://en.wikipedia.org/wiki/Among_Us",
+                          timestamp=datetime.utcnow())
     for i in range(min(10, len(leaders))):
         position = str(int(i + 1))
         if position == "1":
@@ -162,17 +164,17 @@ def leaderboard_embed(title, db_key, user_info):
             position = "3rd 🥉"
         else:
             position = position + "th"
-        eb.add_field(
+        embed.add_field(
             name=f"{position}",
             value=f"<@{int(leaders[i][0])}> with **{leaders[i][1][1]}** wins", inline=False)
-    eb.set_footer(text=user_info[0], icon_url=user_info[1])
-    eb.set_thumbnail(url=user_info[2])
-    return eb
+    embed.set_footer(text=user_info[0], icon_url=user_info[1])
+    embed.set_thumbnail(url=user_info[2])
+    return embed
 
 
 async def send_leaderboard(title, db_key, message, user_info):
     async with message.channel.typing():
-        eb = leaderboard_embed(title, db_key, user_info)
+        embed = leaderboard_embed(title, db_key, user_info)
         options = [
             discord.SelectOption(label="Waking Up Early Award Leaderboard", value="1", emoji="🌇", default=True),
             discord.SelectOption(label="Last Message Of The Day Leaderboard", value="2", emoji="🌃", default=False)
@@ -186,23 +188,62 @@ async def send_leaderboard(title, db_key, message, user_info):
 
         view = discord.ui.View()
         view.add_item(select)
-        return eb, view
+        return embed, view
 
 
-async def send_stats(message, user_info, users_list, db_key, graph_title):
-    async with message.channel.typing():
-        file = performance_analysis.all_users_win_rate_graph(users_list, db_key, graph_title)
-        eb = discord.Embed(title="**Performance Comparison**",
-                           color=discord.Color.from_rgb(255, 88, 62),
-                           url="https://en.wikipedia.org/wiki/Among_Us",
-                           timestamp=datetime.utcnow())
-        eb.set_image(url="attachment://graphs.png")
-        eb.set_footer(text=user_info[0], icon_url=user_info[1])
-        eb.set_thumbnail(url=user_info[2])
-        await message.channel.send(file=file, embed=eb)
+def get_half_image(url, is_left_half):
+    response = requests.get(url)
+    img = Image.open(BytesIO(response.content))
+    width, height = img.size
+    if is_left_half:
+        return img.crop((0, 0, width // 2, height))
+    else:
+        return img.crop((width // 2, 0, width, height))
 
 
-async def send_user_analysis(user_id, user_info, message):
+def resize_and_combine_images(left_url, right_url):
+    left_half = get_half_image(left_url, True)
+    right_half = get_half_image(right_url, False)
+
+    if left_half.width > right_half.width:
+        dimension = left_half.width
+    else:
+        dimension = right_half.width
+
+    left_half = left_half.resize((dimension, 2 * dimension), Image.LANCZOS)
+    right_half = right_half.resize((dimension, 2 * dimension), Image.LANCZOS)
+
+    combined_width = left_half.width + right_half.width
+    combined_height = 2 * left_half.width
+
+    combined_img = Image.new('RGB', (combined_width, combined_height))
+    combined_img.paste(left_half, (0, 0))
+    combined_img.paste(right_half, (dimension, 0))
+    print(combined_img.width, combined_img.height)
+    return combined_img.copy()
+
+
+async def send_stats(user_info, users_list, db_key, graph_title):
+    file = performance_analysis.all_users_win_rate_graph(users_list, db_key, graph_title)
+    embed = discord.Embed(title=f"**Performance Comparison for {users_list[0].name} and {users_list[1].name}**",
+                          color=discord.Color.from_rgb(255, 88, 62),
+                          url="https://en.wikipedia.org/wiki/Among_Us",
+                          timestamp=datetime.utcnow())
+    embed.set_image(url="attachment://graphs.png")
+    embed.set_footer(text=user_info[0], icon_url=user_info[1])
+
+    user1_pfp = discord_user_data.get_user_info(users_list[0].id)["profile_picture"]
+    user2_pfp = discord_user_data.get_user_info(users_list[1].id)["profile_picture"]
+    result_image = resize_and_combine_images(user1_pfp, user2_pfp)
+    result_image.save(f"static/{users_list[0].id}{users_list[1].id}.png")
+
+    embed.set_thumbnail(
+        url=f"https://leaderboardbot.jamesmedley13.repl.co/static/{users_list[0].id}{users_list[1].id}.png")
+
+    return file, embed
+
+
+async def send_user_analysis(user_id, user_info):
     lm_wins_data = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db["LM_scores"])))
     wu_wins_data = convert_observed_list_to_list(convert_observed_dict_to_dict(dict(db["WU_scores"])))
     try:
@@ -215,27 +256,31 @@ async def send_user_analysis(user_id, user_info, message):
         wu_wins = 0
     lm_win_rate = performance_analysis.find_user_win_rate_lm(user_id)
     wu_win_rate = performance_analysis.find_user_win_rate_wu(user_id)
-    eb = discord.Embed(title=f"**Performance Analysis for {user_info[0]}**",
-                       color=discord.Color.from_rgb(255, 88, 62),
-                       url="https://en.wikipedia.org/wiki/Among_Us",
-                       timestamp=datetime.utcnow())
-    eb.add_field(
+    embed = discord.Embed(title=f"**Performance Analysis for {user_info[0]}**",
+                          color=discord.Color.from_rgb(255, 88, 62),
+                          url="https://en.wikipedia.org/wiki/Among_Us",
+                          timestamp=datetime.utcnow())
+    embed.add_field(
         name=f"Waking Up Early Award - {wu_wins} wins",
         value=f"Current win rate: **{round_to_3sf(wu_win_rate * 100)}%**", inline=False)
-    eb.add_field(
+    embed.add_field(
         name=f"Last Message Of The Day Award - {lm_wins} wins",
         value=f"Current win rate: **{round_to_3sf(lm_win_rate * 100)}%**", inline=False)
     file = performance_analysis.user_performance_graphs(user_id)
-    eb.set_image(url="attachment://graphs.png")
-    eb.set_footer(text=user_info[0], icon_url=user_info[1])
-    eb.set_thumbnail(url=user_info[1])
-    return file, eb
+    embed.set_image(url="attachment://graphs.png")
+    embed.set_footer(text=user_info[0], icon_url=user_info[1])
+    embed.set_thumbnail(url=user_info[1])
+    return file, embed
 
 
-async def is_first_message():
+async def is_first_message(message_id):
     channel = bot.get_channel(525730239800672257)
-    messages = [message async for message in channel.history(limit=2)]
-    return messages[1].author.id == 748488791471161405
+    found = False
+    async for message in channel.history(limit=None):
+        if found:
+            return message.author.id == 748488791471161405
+        elif message.id == message_id:
+            found = True
 
 
 def round_to_3sf(number):
@@ -295,11 +340,12 @@ async def on_ready():
 
 @bot.tree.command(name='sync', description='Owner only', guild=discord.Object(id=878982626306826271))
 async def sync(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=False)
     if interaction.user.id == 603142766805123082:
         await bot.tree.sync()
-        await interaction.response.send_message('Command tree synced')
+        await interaction.followup.send('Command tree synced')
     else:
-        await interaction.response.send_message('You must be the owner to use this command!')
+        await interaction.followup.send('You must be the owner to use this command!')
 
 
 @bot.tree.command(name="leaderboard", description="Get leaderboard")
@@ -332,29 +378,31 @@ async def cmd_user_stats(interaction: discord.Interaction, user: discord.Member)
     user_info = [author_info["username"],
                  author_info["profile_picture"],
                  bot_user_info["profile_picture"]]
-    file, embed = await send_user_analysis(str(user.id), user_info, interaction)
+    file, embed = await send_user_analysis(str(user.id), user_info)
     await interaction.followup.send(file=file, embed=embed)
 
 
-@bot.tree.command(name="cmp", description="Compare performance between users")
+@bot.tree.command(name="compare", description="Compare performance between users")
 @app_commands.choices(award=[
     app_commands.Choice(name="Waking Up Early Award", value="wu"),
     app_commands.Choice(name="Last Message Of The Day", value="lm")
 ])
 async def cmd_cmp(interaction: discord.Interaction, award: app_commands.Choice[str], user1: discord.Member,
                   user2: discord.Member):
+    await interaction.response.defer(ephemeral=False)
     author_info = discord_user_data.get_user_info(interaction.user.id)
     bot_user_info = discord_user_data.get_user_info(895026694757445694)
     user_info = [author_info["username"],
                  author_info["profile_picture"],
                  bot_user_info["profile_picture"]]
-    await interaction.response.send_message("inactive command")
-    # if award.value == "wu":
-    #    return
-    # await send_stats(interaction.message, user_info, users_list, "WU_by_date", "Waking Up Early Award Comparison")
-    # else:
-    #  return
-    # await send_stats(interaction.message, user_info, users_list, "LM_by_date", "Last Message Of The Day Comparison")
+    if award.value == "wu":
+        db_key = "WU_by_date"
+        title = "Waking Up Award Comparison"
+    else:
+        db_key = "LM_by_date"
+        title = "Last Message Of The Day Comparison"
+    file, embed = await send_stats(user_info, [user1, user2], db_key, title)
+    await interaction.followup.send(file=file, embed=embed)
 
 
 @bot.tree.command(name="award", description="Award a win to a user")
@@ -384,7 +432,7 @@ async def cmd_award(interaction: discord.Interaction, award: app_commands.Choice
         db_key = "LM_scores"
         lm = True
     award_str = award.name.replace(" Award", "")
-    await award_win(award_str, db_key, user.id, None, lm, None, interaction)
+    await award_win(award_str, db_key, user, None, lm, None, interaction)
 
 
 @bot.event
@@ -393,11 +441,10 @@ async def on_message(message):
         await message.add_reaction("❤️")
     if message.author.id == bot.user.id:
         return
-    if await is_first_message():
+    if await is_first_message(message.id):
         await message.add_reaction("🏆")
-        winner_id = message.author.id
         award = "Waking Up Early"
-        await award_win(award, "WU_scores", winner_id, message.channel, False, None, None)
+        await award_win(award, "WU_scores", message.author, message.channel, False, None, None)
 
 
 keep_alive()
