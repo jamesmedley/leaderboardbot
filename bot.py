@@ -219,8 +219,11 @@ def resize_and_combine_images(left_url, right_url):
     combined_img = Image.new('RGB', (combined_width, combined_height))
     combined_img.paste(left_half, (0, 0))
     combined_img.paste(right_half, (dimension, 0))
-    print(combined_img.width, combined_img.height)
     return combined_img.copy()
+
+
+def calc_filename(user1_id, user2_id):
+    return format(hash(user1_id + user2_id), 'x')
 
 
 async def send_stats(user_info, users_list, db_key, graph_title):
@@ -235,10 +238,10 @@ async def send_stats(user_info, users_list, db_key, graph_title):
     user1_pfp = discord_user_data.get_user_info(users_list[0].id)["profile_picture"]
     user2_pfp = discord_user_data.get_user_info(users_list[1].id)["profile_picture"]
     result_image = resize_and_combine_images(user1_pfp, user2_pfp)
-    result_image.save(f"static/{users_list[0].id}{users_list[1].id}.png")
-
+    img_hex = calc_filename(users_list[0].id, users_list[1].id)
+    result_image.save(f"static/{img_hex}.png")
     embed.set_thumbnail(
-        url=f"https://leaderboardbot.jamesmedley13.repl.co/static/{users_list[0].id}{users_list[1].id}.png")
+        url=f"https://leaderboardbot.jamesmedley13.repl.co/static/{img_hex}.png")
 
     return file, embed
 
